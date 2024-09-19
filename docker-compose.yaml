@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: german-flashcards-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - mongo
+    networks:
+      - flashcards-network
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: german-flashcards-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_BASE_URL=http://localhost:8000
+    depends_on:
+      - backend
+    networks:
+      - flashcards-network
+
+  mongo:
+    image: mongo:5.0
+    container_name: german-flashcards-mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: german_flashcards
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - flashcards-network
+
+  storybook:
+    build:
+      context: ./frontend
+    container_name: german-flashcards-storybook
+    command: yarn storybook
+    ports:
+      - "6006:6006"
+    depends_on:
+      - frontend
+    networks:
+      - flashcards-network
+
+networks:
+  flashcards-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
