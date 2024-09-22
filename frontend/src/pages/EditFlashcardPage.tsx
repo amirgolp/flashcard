@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import FlashcardForm from '../components/FlashcardForm'
 import { getFlashcard, updateFlashcard } from '../api/api'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -11,7 +11,8 @@ const EditFlashcardPage: React.FC = () => {
   const [flashcard, setFlashcard] = useState<Flashcard | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
 
-  const fetchFlashcard = async () => {
+  useEffect(() => {
+    const fetchFlashcard = async () => {
     try {
       if (id) {
         const data = await getFlashcard(id)
@@ -23,8 +24,6 @@ const EditFlashcardPage: React.FC = () => {
       setLoading(false)
     }
   }
-
-  useEffect(() => {
     fetchFlashcard()
   }, [id])
 

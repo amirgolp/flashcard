@@ -27,7 +27,10 @@ const FlashcardList: React.FC<FlashcardListProps> = ({ selectedDeckId }) => {
   const [searchQuery, setSearchQuery] = useState<string>('')
   const navigate = useNavigate()
 
-  const fetchFlashcards = async () => {
+
+  useEffect(() => {
+    setLoading(true)
+    const fetchFlashcards = async () => {
     try {
       const data = await getFlashcards(
         selectedDeckId || undefined,
@@ -40,9 +43,6 @@ const FlashcardList: React.FC<FlashcardListProps> = ({ selectedDeckId }) => {
       setLoading(false)
     }
   }
-
-  useEffect(() => {
-    setLoading(true)
     fetchFlashcards()
   }, [selectedDeckId, searchQuery])
 
