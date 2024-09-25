@@ -10,7 +10,8 @@ import {
 import HomeIcon from '@mui/icons-material/Home'
 import SearchIcon from '@mui/icons-material/Search'
 import AddBoxIcon from '@mui/icons-material/AddBox'
-import Link from './Link' // Import the custom Link component
+import ListItemButton from '@mui/material/ListItemButton'
+import Link from './Link'
 
 const drawerWidth = 240
 
@@ -26,23 +27,34 @@ const Sidebar: React.FC = () => {
     >
       <Toolbar />
       <List>
-        <ListItem button component={Link} to="/">
-          <ListItemIcon>
-            <HomeIcon />
-          </ListItemIcon>
-          <ListItemText primary="Home" />
+        {/* Home */}
+        <ListItem disablePadding>
+          <ListItemButton component={Link} to="/">
+            <ListItemIcon>
+              <HomeIcon />
+            </ListItemIcon>
+            <ListItemText primary="Home" />
+          </ListItemButton>
         </ListItem>
-        <ListItem button component={Link} to="/search">
-          <ListItemIcon>
-            <SearchIcon />
-          </ListItemIcon>
-          <ListItemText primary="Search" />
+
+        {/* Search */}
+        <ListItem disablePadding>
+          <ListItemButton component={Link} to="/search">
+            <ListItemIcon>
+              <SearchIcon />
+            </ListItemIcon>
+            <ListItemText primary="Search" />
+          </ListItemButton>
         </ListItem>
-        <ListItem button component={Link} to="/add">
-          <ListItemIcon>
-            <AddBoxIcon />
-          </ListItemIcon>
-          <ListItemText primary="Add Flashcard" />
+
+        {/* Add Flashcard */}
+        <ListItem disablePadding>
+          <ListItemButton component={Link} to="/add">
+            <ListItemIcon>
+              <AddBoxIcon />
+            </ListItemIcon>
+            <ListItemText primary="Add Flashcard" />
+          </ListItemButton>
         </ListItem>
       </List>
     </Drawer>

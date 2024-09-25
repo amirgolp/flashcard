@@ -118,7 +118,9 @@ const App: React.FC = () => {
             }
           />
           <Route path="/add" element={<AddFlashcard />} />
-          <Route path="/search" element={<SearchFlashcards />} />
+          <Route path="/search" element={<SearchFlashcards setSearchQuery={function(query: string): void {
+                      throw new Error(`{query}: ${query} is not used.`)
+                  } } />} />
           {/* Add more routes as needed */}
         </Routes>
       </Box>

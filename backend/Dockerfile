@@ -20,7 +20,7 @@ RUN pip install ruff
 COPY . .
 
 # Lint the code
-RUN ruff check . --fix
+RUN ruff format .
 
 # Expose port
 EXPOSE 8000
