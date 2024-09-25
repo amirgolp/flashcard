@@ -5,35 +5,36 @@ from app.models import Flashcard
 from app.schemas import FlashcardCreate, FlashcardUpdate, FlashcardOut
 from app.elastic import index_flashcard, delete_flashcard_from_index, search_flashcards
 from datetime import datetime
-from app.exceptions import not_found_exception, bad_request_exception, internal_server_error_exception
-
-router = APIRouter(
-    prefix="/flashcards",
-    tags=["Flashcards"]
+from app.exceptions import (
+    not_found_exception,
+    bad_request_exception,
+    internal_server_error_exception,
 )
+
+router = APIRouter(prefix="/flashcards", tags=["Flashcards"])
+
 
 @router.post("/", response_model=FlashcardOut, status_code=status.HTTP_201_CREATED)
 def create_flashcard(flashcard: FlashcardCreate):
     try:
-        fc = Flashcard(
-            german=flashcard.german,
-            english=flashcard.english
-        )
+        fc = Flashcard(german=flashcard.german, english=flashcard.english)
         fc.save()
         index_flashcard(fc)
         return FlashcardOut(
             id=str(fc.id),
             german=fc.german,
             english=fc.english,
+            note=fc.note,
             date_created=fc.date_created,
             date_modified=fc.date_modified,
             guessed_correct=fc.guessed_correct,
-            guessed_wrong=fc.guessed_wrong
+            guessed_wrong=fc.guessed_wrong,
         )
     except ValidationError as ve:
         raise bad_request_exception(detail=str(ve))
     except Exception as e:
         raise internal_server_error_exception(detail=str(e))
+
 
 @router.get("/{flashcard_id}", response_model=FlashcardOut)
 def get_flashcard(flashcard_id: str):
@@ -43,15 +44,17 @@ def get_flashcard(flashcard_id: str):
             id=str(fc.id),
             german=fc.german,
             english=fc.english,
+            note=fc.note,
             date_created=fc.date_created,
             date_modified=fc.date_modified,
             guessed_correct=fc.guessed_correct,
-            guessed_wrong=fc.guessed_wrong
+            guessed_wrong=fc.guessed_wrong,
         )
     except DoesNotExist:
         raise not_found_exception(detail="Flashcard not found")
     except Exception as e:
         raise internal_server_error_exception(detail=str(e))
+
 
 @router.put("/{flashcard_id}", response_model=FlashcardOut)
 def update_flashcard(flashcard_id: str, flashcard: FlashcardUpdate):
@@ -67,10 +70,11 @@ def update_flashcard(flashcard_id: str, flashcard: FlashcardUpdate):
             id=str(fc.id),
             german=fc.german,
             english=fc.english,
+            note=fc.note,
             date_created=fc.date_created,
             date_modified=fc.date_modified,
             guessed_correct=fc.guessed_correct,
-            guessed_wrong=fc.guessed_wrong
+            guessed_wrong=fc.guessed_wrong,
         )
     except DoesNotExist:
         raise not_found_exception(detail="Flashcard not found")
@@ -78,6 +82,7 @@ def update_flashcard(flashcard_id: str, flashcard: FlashcardUpdate):
         raise bad_request_exception(detail=str(ve))
     except Exception as e:
         raise internal_server_error_exception(detail=str(e))
+
 
 @router.delete("/{flashcard_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_flashcard(flashcard_id: str):
@@ -91,6 +96,7 @@ def delete_flashcard(flashcard_id: str):
     except Exception as e:
         raise internal_server_error_exception(detail=str(e))
 
+
 @router.get("/", response_model=List[FlashcardOut])
 def list_flashcards():
     try:
@@ -100,14 +106,17 @@ def list_flashcards():
                 id=str(fc.id),
                 german=fc.german,
                 english=fc.english,
+                note=fc.note,
                 date_created=fc.date_created,
                 date_modified=fc.date_modified,
                 guessed_correct=fc.guessed_correct,
-                guessed_wrong=fc.guessed_wrong
-            ) for fc in fcs
+                guessed_wrong=fc.guessed_wrong,
+            )
+            for fc in fcs
         ]
     except Exception as e:
         raise internal_server_error_exception(detail=str(e))
+
 
 @router.get("/search/", response_model=List[FlashcardOut])
 def search(query: str):
@@ -119,12 +128,13 @@ def search(query: str):
                 id=str(fc.id),
                 german=fc.german,
                 english=fc.english,
+                note=fc.note,
                 date_created=fc.date_created,
                 date_modified=fc.date_modified,
                 guessed_correct=fc.guessed_correct,
-                guessed_wrong=fc.guessed_wrong
-            ) for fc in fcs
+                guessed_wrong=fc.guessed_wrong,
+            )
+            for fc in fcs
         ]
     except Exception as e:
         raise internal_server_error_exception(detail=str(e))
-    

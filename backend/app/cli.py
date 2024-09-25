@@ -3,10 +3,12 @@ from app.database import connect_db
 from app.elastic import create_index
 from app.models import Flashcard
 
+
 @click.group()
 def cli():
     """Flashcard App CLI"""
     pass
+
 
 @cli.command()
 def init_db():
@@ -18,6 +20,7 @@ def init_db():
     except Exception as e:
         click.echo(f"Error initializing database: {e}")
 
+
 @cli.command()
 def list_flashcards():
     """List all flashcards."""
@@ -28,6 +31,7 @@ def list_flashcards():
             click.echo(f"{fc.id}: {fc.german} - {fc.english}")
     except Exception as e:
         click.echo(f"Error listing flashcards: {e}")
+
 
 if __name__ == "__main__":
     cli()

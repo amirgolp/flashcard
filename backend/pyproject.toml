@@ -1,7 +1,6 @@
 [tool.ruff]
 select = ["E", "F", "W", "C", "B", "A"]
 ignore = ["E501"]
-max-line-length = 88
 exclude = [".pyenv/", "__pycache__/", "migrations/"]
 
 [tool.ruff.per-file-ignores]

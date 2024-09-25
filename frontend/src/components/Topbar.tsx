@@ -1,5 +1,11 @@
 import React, { useContext } from 'react'
-import { AppBar, Toolbar, Typography, IconButton, InputBase } from '@mui/material'
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  IconButton,
+  InputBase,
+} from '@mui/material'
 import Brightness4Icon from '@mui/icons-material/Brightness4'
 import Brightness7Icon from '@mui/icons-material/Brightness7'
 import SearchIcon from '@mui/icons-material/Search'

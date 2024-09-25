@@ -5,7 +5,9 @@ interface SearchFlashcardsProps {
   setSearchQuery: (query: string) => void
 }
 
-const SearchFlashcards: React.FC<SearchFlashcardsProps> = ({ setSearchQuery }) => {
+const SearchFlashcards: React.FC<SearchFlashcardsProps> = ({
+  setSearchQuery,
+}) => {
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value)
   }

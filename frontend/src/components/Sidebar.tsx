@@ -1,9 +1,16 @@
 import React from 'react'
-import { Drawer, List, ListItem, ListItemIcon, ListItemText, Toolbar } from '@mui/material'
+import {
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Toolbar,
+} from '@mui/material'
 import HomeIcon from '@mui/icons-material/Home'
 import SearchIcon from '@mui/icons-material/Search'
 import AddBoxIcon from '@mui/icons-material/AddBox'
-import { Link } from 'react-router-dom'
+import Link from './Link' // Import the custom Link component
 
 const drawerWidth = 240
 

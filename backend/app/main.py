@@ -9,6 +9,7 @@ load_dotenv()
 
 app = FastAPI()
 
+
 def startup_event():
     try:
         connect_db()
@@ -18,9 +19,11 @@ def startup_event():
         print(f"Error during startup: {e}")
         # Optionally, exit or handle accordingly
 
+
 def shutdown_event():
     # Perform any necessary cleanup here
     print("Shutting down application.")
+
 
 # Register event handlers
 app.add_event_handler("startup", startup_event)

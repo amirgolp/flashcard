@@ -9,7 +9,8 @@ const AddFlashcard: React.FC = () => {
   const queryClient = useQueryClient()
 
   const mutation = useMutation(
-    (newFlashcard: { german: string; english: string }) => axios.post('/flashcards/', newFlashcard),
+    (newFlashcard: { german: string; english: string }) =>
+      axios.post('/flashcards/', newFlashcard),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('flashcards')
@@ -36,7 +37,7 @@ const AddFlashcard: React.FC = () => {
           fullWidth
           required
           value={german}
-          onChange={(e) => setGerman(e.target.value)}
+          onChange={e => setGerman(e.target.value)}
           sx={{ mb: 2 }}
         />
         <TextField
@@ -45,7 +46,7 @@ const AddFlashcard: React.FC = () => {
           fullWidth
           required
           value={english}
-          onChange={(e) => setEnglish(e.target.value)}
+          onChange={e => setEnglish(e.target.value)}
           sx={{ mb: 2 }}
         />
         <Button type="submit" variant="contained" color="primary">
