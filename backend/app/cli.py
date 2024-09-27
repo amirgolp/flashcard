@@ -1,7 +1,7 @@
 import click
-from app.database import connect_db
-from app.elastic import create_index
-from app.models import Flashcard
+from backend.app.database import connect_db
+from backend.app.elastic import create_index
+from backend.app.models import Flashcard
 
 
 @click.group()

@@ -1,9 +1,14 @@
+from dotenv import load_dotenv
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import NotFoundError
 import os
 
-ES_HOST = os.getenv("ELASTIC_HOST", "http://elasticsearch:9200")
-ES_INDEX = "flashcards"
+from backend.app.utils import default_es_host, default_es_index, env_path
+
+if not os.getenv("ELASTIC_HOST"):
+    load_dotenv(env_path)
+ES_HOST = os.getenv("ELASTIC_HOST", default_es_host)
+ES_INDEX = default_es_index
 
 es = Elasticsearch(ES_HOST)
 
@@ -35,7 +40,7 @@ def delete_flashcard_from_index(flashcard_id):
     try:
         es.delete(index=ES_INDEX, id=flashcard_id)
     except NotFoundError:
-        pass  # Already deleted or never existed
+        pass
 
 
 def search_flashcards(query):

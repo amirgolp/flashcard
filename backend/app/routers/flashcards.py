@@ -1,11 +1,11 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from typing import List
 from mongoengine import DoesNotExist, ValidationError
-from app.models import Flashcard
-from app.schemas import FlashcardCreate, FlashcardUpdate, FlashcardOut
-from app.elastic import index_flashcard, delete_flashcard_from_index, search_flashcards
+from backend.app.models import Flashcard
+from backend.app.schemas import FlashcardCreate, FlashcardUpdate, FlashcardOut
+from backend.app.elastic import index_flashcard, delete_flashcard_from_index, search_flashcards
 from datetime import datetime
-from app.exceptions import (
+from backend.app.exceptions import (
     not_found_exception,
     bad_request_exception,
     internal_server_error_exception,
