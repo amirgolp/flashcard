@@ -29,4 +29,4 @@ class FlashcardOut(FlashcardBase):
     guessed_wrong: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True

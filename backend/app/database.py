@@ -1,22 +1,51 @@
-from mongoengine import connect
-from dotenv import load_dotenv
 import os
+import logging
+from motor.motor_asyncio import AsyncIOMotorClient
+from dotenv import load_dotenv
+from fastapi import FastAPI
 
-from backend.app.utils import env_path
+# Configure Logging
+logging.basicConfig(
+    level=logging.INFO,  # Change to DEBUG for more verbosity
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger("german-flashcards-api")
+
+load_dotenv()
+
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
+DATABASE_NAME = os.getenv("DATABASE_NAME", "german_flashcards")
+
+client: AsyncIOMotorClient = None
+db = None
+
+decks_collection = None
+flashcards_collection = None
 
 
-class MongoConnectionError(Exception):
-    pass
-
-
-def connect_db():
+async def connect_to_mongo():
+    global client, db, decks_collection, flashcards_collection
     try:
-        if not os.getenv("MONGODB_URI"):
-            load_dotenv(env_path)
-        mongo_uri = os.getenv("MONGODB_URI")
-        if not mongo_uri:
-            raise ValueError("MONGODB_URI not set in environment variables")
-        connect(host=mongo_uri)
-        print("Connected to MongoDB")
+        client = AsyncIOMotorClient(MONGODB_URI)
+        db = client[DATABASE_NAME]
+        decks_collection = db.get_collection("decks")
+        flashcards_collection = db.get_collection("flashcards")
+        logger.info("Connected to MongoDB")
     except Exception as e:
-        raise MongoConnectionError(e)
+        logger.error(f"Error connecting to MongoDB: {e}")
+        raise e
+
+
+async def disconnect_from_mongo():
+    global client
+    try:
+        client.close()
+        logger.info("Disconnected from MongoDB")
+    except Exception as e:
+        logger.error(f"Error disconnecting from MongoDB: {e}")
+        raise e
+
+
+def init_db(app: FastAPI):
+    app.add_event_handler("startup", connect_to_mongo)
+    app.add_event_handler("shutdown", disconnect_from_mongo)

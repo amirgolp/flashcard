@@ -1,163 +1,115 @@
-import React, { useState } from 'react'
-import {
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  Stack,
-  TextField,
-} from '@mui/material'
-import FlipCameraAndroidIcon from '@mui/icons-material/FlipCameraAndroid'
+import React, { useState } from "react";
+import { Card, CardContent, Typography, CardActions, Button, TextField } from "@mui/material";
 
 interface FlashcardProps {
   flashcard: {
-    id: string
-    german: string
-    english: string
-    date_created: string
-    date_modified: string
-    guessed_correct: boolean
-    guessed_wrong: boolean
-    notes?: string
-  }
-  onGuess: (id: string, correct: boolean) => void
-  onNotesChange?: (id: string, notes: string) => void
+    _id: string;
+    front: string;
+    back: string;
+    decks: string[];
+  };
+  onDelete: (id: string) => void;
+  onUpdate: (id: string, updatedFlashcard: Partial<FlashcardProps["flashcard"]>) => void;
 }
 
-const Flashcard: React.FC<FlashcardProps> = ({
-  flashcard,
-  onGuess,
-  onNotesChange,
-}) => {
-  const [flipped, setFlipped] = useState(false)
-  const [notes, setNotes] = useState(flashcard.notes || '')
+const Flashcard: React.FC<FlashcardProps> = ({ flashcard, onDelete, onUpdate }) => {
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [front, setFront] = useState<string>(flashcard.front);
+  const [back, setBack] = useState<string>(flashcard.back);
 
-  const handleFlip = () => {
-    setFlipped(!flipped)
-  }
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
 
-  const handleNotesChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    setNotes(e.target.value)
-    if (onNotesChange) {
-      onNotesChange(flashcard.id, e.target.value)
+  const handleSave = async () => {
+    try {
+      const response = await fetch(`/v1/flashcards/${flashcard._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ front, back }),
+      });
+
+      if (response.ok) {
+        const updatedFlashcard = await response.json();
+        onUpdate(flashcard._id, updatedFlashcard);
+        setIsEditing(false);
+      } else {
+        const errorData = await response.json();
+        alert(`Error updating flashcard: ${errorData.detail}`);
+      }
+    } catch (error) {
+      console.error("Error updating flashcard:", error);
+      alert("An error occurred while updating the flashcard");
     }
-  }
+  };
+
+  const handleDelete = () => {
+    onDelete(flashcard._id);
+  };
+
+  const handleCancel = () => {
+    setFront(flashcard.front);
+    setBack(flashcard.back);
+    setIsEditing(false);
+  };
 
   return (
-    <Card
-      sx={{
-        width: { xs: '90%', sm: 300 }, // 90% width on extra-small screens, 300px on small and up
-        margin: 'auto',
-        perspective: '1000px',
-      }}
-    >
-      <CardContent
-        sx={{
-          position: 'relative',
-          width: '100%',
-          height: 200,
-          transformStyle: 'preserve-3d',
-          transition: 'transform 0.8s',
-          transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-        }}
-      >
-        {/* Front Side - German */}
-        <div
-          style={{
-            position: 'absolute',
-            width: '100%',
-            height: '100%',
-            backfaceVisibility: 'hidden',
-            backgroundColor: '#f0f0f0',
-            borderRadius: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px',
-            boxSizing: 'border-box',
-          }}
-        >
-          <Typography variant="h5" component="div">
-            {flashcard.german}
-          </Typography>
-        </div>
-
-        {/* Back Side - English */}
-        <div
-          style={{
-            position: 'absolute',
-            width: '100%',
-            height: '100%',
-            backfaceVisibility: 'hidden',
-            backgroundColor: '#d0e1f9',
-            borderRadius: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px',
-            boxSizing: 'border-box',
-            transform: 'rotateY(180deg)',
-          }}
-        >
-          <Typography variant="h5" component="div">
-            {flashcard.english}
-          </Typography>
-        </div>
-      </CardContent>
-
-      {/* Flip Button */}
-      <Stack direction="row" justifyContent="center" sx={{ mt: 1 }}>
-        <Button
-          variant="outlined"
-          startIcon={<FlipCameraAndroidIcon />}
-          onClick={handleFlip}
-        >
-          Flip
-        </Button>
-      </Stack>
-
-      {/* Guess Buttons */}
-      <Stack
-        direction="row"
-        spacing={2}
-        justifyContent="center"
-        sx={{ mt: 2, mb: 2 }}
-      >
-        <Button
-          variant="contained"
-          color="success"
-          onClick={() => onGuess(flashcard.id, true)}
-        >
-          Correct
-        </Button>
-        <Button
-          variant="contained"
-          color="error"
-          onClick={() => onGuess(flashcard.id, false)}
-        >
-          Incorrect
-        </Button>
-      </Stack>
-
-      {/* Notes Section */}
+    <Card sx={{ minWidth: 275, mb: 2 }}>
       <CardContent>
-        <Typography variant="h6" gutterBottom>
-          Notes
-        </Typography>
-        <TextField
-          label="Your Notes"
-          variant="outlined"
-          fullWidth
-          multiline
-          rows={3}
-          value={notes}
-          onChange={handleNotesChange}
-        />
+        {isEditing ? (
+          <>
+            <TextField
+              label="Front"
+              variant="outlined"
+              fullWidth
+              value={front}
+              onChange={(e) => setFront(e.target.value)}
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              label="Back"
+              variant="outlined"
+              fullWidth
+              value={back}
+              onChange={(e) => setBack(e.target.value)}
+            />
+          </>
+        ) : (
+          <>
+            <Typography variant="h5" component="div">
+              Front: {flashcard.front}
+            </Typography>
+            <Typography sx={{ mb: 1.5 }} color="text.secondary">
+              Back: {flashcard.back}
+            </Typography>
+          </>
+        )}
       </CardContent>
+      <CardActions>
+        {isEditing ? (
+          <>
+            <Button size="small" onClick={handleSave}>
+              Save
+            </Button>
+            <Button size="small" onClick={handleCancel}>
+              Cancel
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button size="small" onClick={handleEdit}>
+              Edit
+            </Button>
+            <Button size="small" color="error" onClick={handleDelete}>
+              Delete
+            </Button>
+          </>
+        )}
+      </CardActions>
     </Card>
-  )
-}
+  );
+};
 
-export default Flashcard
+export default Flashcard;
