@@ -39,10 +39,10 @@ export const api = {
     return response.data.filter((card: Flashcard) => card.decks.includes(title))
   },
   createFlashcard: async (flashcard: {
-    guessed_correct_last_time: boolean;
-    hardness_level: string;
-    german_word: string;
-    english_translation: string;
+    guessed_correct_last_time: boolean
+    hardness_level: string
+    german_word: string
+    english_translation: string
     decks: string[]
   }): Promise<Flashcard> => {
     const response = await axios.post(`${API_BASE_URL}/flashcards/`, flashcard)

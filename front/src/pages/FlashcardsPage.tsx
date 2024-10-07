@@ -23,11 +23,19 @@ import {
   Select,
   MenuItem,
   Checkbox,
-  FormControlLabel, CardActions,
+  FormControlLabel,
+  CardActions,
 } from '@mui/material'
-import { ViewList, GridView, ArrowForward, ArrowBack, Add, Edit } from '@mui/icons-material'
+import {
+  ViewList,
+  GridView,
+  ArrowForward,
+  ArrowBack,
+  Add,
+  Edit,
+} from '@mui/icons-material'
 import './FlashcardsPage.css'
-import Grid from "@mui/material/Grid2"
+import Grid from '@mui/material/Grid2'
 
 const FlashcardsPage: React.FC = () => {
   const { title } = useParams<{ title: string }>()
@@ -54,7 +62,10 @@ const FlashcardsPage: React.FC = () => {
     fetchFlashcards()
   }, [title])
 
-  const handleViewChange = (_event: React.MouseEvent<HTMLElement>, nextView: 'gallery' | 'list' | 'one') => {
+  const handleViewChange = (
+    _event: React.MouseEvent<HTMLElement>,
+    nextView: 'gallery' | 'list' | 'one'
+  ) => {
     if (nextView !== null) {
       setView(nextView)
     }
@@ -65,7 +76,9 @@ const FlashcardsPage: React.FC = () => {
   }
 
   const handlePreviousCard = () => {
-    setCurrentIndex((prev) => (prev - 1 + flashcards.length) % flashcards.length)
+    setCurrentIndex(
+      (prev) => (prev - 1 + flashcards.length) % flashcards.length
+    )
   }
 
   const handleAddFlashcard = async () => {
@@ -104,7 +117,9 @@ const FlashcardsPage: React.FC = () => {
           guessed_correct_last_time: editedFlashcard.guessed_correct_last_time,
         })
         setFlashcards((prev) =>
-          prev.map((fc) => (fc.id === editedFlashcard.id ? editedFlashcard : fc))
+          prev.map((fc) =>
+            fc.id === editedFlashcard.id ? editedFlashcard : fc
+          )
         )
         setOpenEditDialog(false)
       } catch (error) {
@@ -155,8 +170,18 @@ const FlashcardsPage: React.FC = () => {
         </ToggleButton>
       </ToggleButtonGroup>
 
-      {view === 'gallery' && <GalleryView flashcards={flashcards} onFlashcardClick={handleFlashcardClick} />}
-      {view === 'list' && <ListView flashcards={flashcards} onFlashcardClick={handleFlashcardClick} />}
+      {view === 'gallery' && (
+        <GalleryView
+          flashcards={flashcards}
+          onFlashcardClick={handleFlashcardClick}
+        />
+      )}
+      {view === 'list' && (
+        <ListView
+          flashcards={flashcards}
+          onFlashcardClick={handleFlashcardClick}
+        />
+      )}
       {view === 'one' && (
         <OneByOneView
           flashcards={flashcards}
@@ -170,103 +195,119 @@ const FlashcardsPage: React.FC = () => {
       {/* Add Flashcard Dialog */}
       <Dialog open={openAddDialog} onClose={() => setOpenAddDialog(false)}>
         <DialogTitle>Add New Flashcard</DialogTitle>
-          <DialogContent>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="German Word"
-              fullWidth
-              value={newGermanWord}
-              onChange={(e) => setNewGermanWord(e.target.value)}
-            />
-            <TextField
-              margin="dense"
-              label="English Translation"
-              fullWidth
-              value={newEnglishTranslation}
-              onChange={(e) => setNewEnglishTranslation(e.target.value)}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenAddDialog(false)}>Cancel</Button>
-            <Button onClick={handleAddFlashcard} color="primary">
-              Add
-            </Button>
-          </DialogActions>
-        </Dialog>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="German Word"
+            fullWidth
+            value={newGermanWord}
+            onChange={(e) => setNewGermanWord(e.target.value)}
+          />
+          <TextField
+            margin="dense"
+            label="English Translation"
+            fullWidth
+            value={newEnglishTranslation}
+            onChange={(e) => setNewEnglishTranslation(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenAddDialog(false)}>Cancel</Button>
+          <Button onClick={handleAddFlashcard} color="primary">
+            Add
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-        {/* Edit Flashcard Dialog */}
-        <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
-    <DialogTitle>Edit Flashcard</DialogTitle>
-    <DialogContent>
-      <TextField
-        autoFocus
-        margin="dense"
-        label="German Word"
-        fullWidth
-        value={editedFlashcard?.german_word || ''}
-        onChange={(e) =>
-          setEditedFlashcard((prev) =>
-            prev ? { ...prev, german_word: e.target.value } : prev
-          )
-        }
-      />
-      <TextField
-        margin="dense"
-        label="English Translation"
-        fullWidth
-        value={editedFlashcard?.english_translation || ''}
-        onChange={(e) =>
-          setEditedFlashcard((prev) =>
-            prev ? { ...prev, english_translation: e.target.value } : prev
-          )
-        }
-      />
-      <FormControl fullWidth margin="normal">
-        <InputLabel>Hardness Level</InputLabel>
-        <Select
-          value={editedFlashcard?.hardness_level || 'medium'}
-          onChange={(e) =>
-            setEditedFlashcard((prev) =>
-              prev ? { ...prev, hardness_level: e.target.value as 'easy' | 'medium' | 'hard' } : prev
-            )
-          }
-        >
-          <MenuItem value="easy">Easy</MenuItem>
-          <MenuItem value="medium">Medium</MenuItem>
-          <MenuItem value="hard">Hard</MenuItem>
-        </Select>
-      </FormControl>
-      <FormControlLabel
-        control={
-          <Checkbox
-            checked={editedFlashcard?.guessed_correct_last_time || false}
+      {/* Edit Flashcard Dialog */}
+      <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
+        <DialogTitle>Edit Flashcard</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="German Word"
+            fullWidth
+            value={editedFlashcard?.german_word || ''}
             onChange={(e) =>
               setEditedFlashcard((prev) =>
-                prev ? { ...prev, guessed_correct_last_time: e.target.checked } : prev
+                prev ? { ...prev, german_word: e.target.value } : prev
               )
             }
           />
-        }
-        label="Guessed Correct Last Time"
-      />
-    </DialogContent>
-    <DialogActions>
-      <Button onClick={() => setOpenEditDialog(false)}>Cancel</Button>
-      <Button onClick={handleEditFlashcard} color="primary">
-        Save
-      </Button>
-    </DialogActions>
-  </Dialog>
+          <TextField
+            margin="dense"
+            label="English Translation"
+            fullWidth
+            value={editedFlashcard?.english_translation || ''}
+            onChange={(e) =>
+              setEditedFlashcard((prev) =>
+                prev ? { ...prev, english_translation: e.target.value } : prev
+              )
+            }
+          />
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Hardness Level</InputLabel>
+            <Select
+              value={editedFlashcard?.hardness_level || 'medium'}
+              onChange={(e) =>
+                setEditedFlashcard((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        hardness_level: e.target.value as
+                          | 'easy'
+                          | 'medium'
+                          | 'hard',
+                      }
+                    : prev
+                )
+              }
+            >
+              <MenuItem value="easy">Easy</MenuItem>
+              <MenuItem value="medium">Medium</MenuItem>
+              <MenuItem value="hard">Hard</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={editedFlashcard?.guessed_correct_last_time || false}
+                onChange={(e) =>
+                  setEditedFlashcard((prev) =>
+                    prev
+                      ? { ...prev, guessed_correct_last_time: e.target.checked }
+                      : prev
+                  )
+                }
+              />
+            }
+            label="Guessed Correct Last Time"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenEditDialog(false)}>Cancel</Button>
+          <Button onClick={handleEditFlashcard} color="primary">
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   )
 }
 
-const GalleryView: React.FC<{ flashcards: Flashcard[]; onFlashcardClick: (index: number) => void }> = ({ flashcards, onFlashcardClick }) => (
+const GalleryView: React.FC<{
+  flashcards: Flashcard[]
+  onFlashcardClick: (index: number) => void
+}> = ({ flashcards, onFlashcardClick }) => (
   <Grid container spacing={3}>
     {flashcards.map((flashcard, index) => (
       <Grid key={flashcard.id}>
-        <Card onClick={() => onFlashcardClick(index)} style={{ cursor: 'pointer' }}>
+        <Card
+          onClick={() => onFlashcardClick(index)}
+          style={{ cursor: 'pointer' }}
+        >
           <CardContent>
             <Typography variant="h6">{flashcard.german_word}</Typography>
           </CardContent>
@@ -276,7 +317,10 @@ const GalleryView: React.FC<{ flashcards: Flashcard[]; onFlashcardClick: (index:
   </Grid>
 )
 
-const ListView: React.FC<{ flashcards: Flashcard[]; onFlashcardClick: (index: number) => void }> = ({ flashcards, onFlashcardClick }) => (
+const ListView: React.FC<{
+  flashcards: Flashcard[]
+  onFlashcardClick: (index: number) => void
+}> = ({ flashcards, onFlashcardClick }) => (
   <List>
     {flashcards.map((flashcard, index) => (
       <ListItem key={flashcard.id} onClick={() => onFlashcardClick(index)}>
@@ -311,7 +355,11 @@ const OneByOneView: React.FC<{
           <div className="flashcard-face flashcard-front">
             <Card>
               <CardContent>
-                <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                <Typography
+                  variant="subtitle2"
+                  color="textSecondary"
+                  gutterBottom
+                >
                   Front (German)
                 </Typography>
                 <Typography variant="h6">
@@ -319,13 +367,28 @@ const OneByOneView: React.FC<{
                 </Typography>
               </CardContent>
               <CardActions style={{ justifyContent: 'space-between' }}>
-                <IconButton onClick={(e) => { e.stopPropagation(); onPrevious(); }}>
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onPrevious()
+                  }}
+                >
                   <ArrowBack />
                 </IconButton>
-                <IconButton onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onEdit()
+                  }}
+                >
                   <Edit />
                 </IconButton>
-                <IconButton onClick={(e) => { e.stopPropagation(); onNext(); }}>
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onNext()
+                  }}
+                >
                   <ArrowForward />
                 </IconButton>
               </CardActions>
@@ -335,7 +398,11 @@ const OneByOneView: React.FC<{
           <div className="flashcard-face flashcard-back">
             <Card>
               <CardContent>
-                <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                <Typography
+                  variant="subtitle2"
+                  color="textSecondary"
+                  gutterBottom
+                >
                   Back (English)
                 </Typography>
                 <Typography variant="h6">
@@ -343,13 +410,28 @@ const OneByOneView: React.FC<{
                 </Typography>
               </CardContent>
               <CardActions style={{ justifyContent: 'space-between' }}>
-                <IconButton onClick={(e) => { e.stopPropagation(); onPrevious(); }}>
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onPrevious()
+                  }}
+                >
                   <ArrowBack />
                 </IconButton>
-                <IconButton onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onEdit()
+                  }}
+                >
                   <Edit />
                 </IconButton>
-                <IconButton onClick={(e) => { e.stopPropagation(); onNext(); }}>
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onNext()
+                  }}
+                >
                   <ArrowForward />
                 </IconButton>
               </CardActions>
