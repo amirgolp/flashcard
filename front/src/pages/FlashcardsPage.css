@@ -1,0 +1,15 @@
+.flashcard-container {
+  perspective: 1000px;
+}
+
+.flashcard {
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+  cursor: pointer;
+  max-width: 400px;
+  margin: 16px auto;
+}
+
+.flipped {
+  transform: rotateY(180deg);
+}
