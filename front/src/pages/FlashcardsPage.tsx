@@ -22,8 +22,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Checkbox,
-  FormControlLabel,
   CardActions,
 } from '@mui/material'
 import {
@@ -88,8 +86,7 @@ const FlashcardsPage: React.FC = () => {
           german_word: newGermanWord,
           english_translation: newEnglishTranslation,
           decks: [title],
-          hardness_level: 'medium',
-          guessed_correct_last_time: false,
+          status: 'medium',
         })
         setFlashcards((prev) => [...prev, newFlashcard])
         setOpenAddDialog(false)
@@ -113,8 +110,7 @@ const FlashcardsPage: React.FC = () => {
         await api.updateFlashcard(editedFlashcard.id, {
           german_word: editedFlashcard.german_word,
           english_translation: editedFlashcard.english_translation,
-          hardness_level: editedFlashcard.hardness_level,
-          guessed_correct_last_time: editedFlashcard.guessed_correct_last_time,
+          status: editedFlashcard.status,
         })
         setFlashcards((prev) =>
           prev.map((fc) =>
@@ -248,15 +244,16 @@ const FlashcardsPage: React.FC = () => {
             }
           />
           <FormControl fullWidth margin="normal">
-            <InputLabel>Hardness Level</InputLabel>
+            <InputLabel>Status</InputLabel>
             <Select
-              value={editedFlashcard?.hardness_level || 'medium'}
+              value={editedFlashcard?.status || 'easy'}
               onChange={(e) =>
                 setEditedFlashcard((prev) =>
                   prev
                     ? {
                         ...prev,
-                        hardness_level: e.target.value as
+                        status: e.target.value as
+                          | 'fail'
                           | 'easy'
                           | 'medium'
                           | 'hard',
@@ -270,21 +267,6 @@ const FlashcardsPage: React.FC = () => {
               <MenuItem value="hard">Hard</MenuItem>
             </Select>
           </FormControl>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={editedFlashcard?.guessed_correct_last_time || false}
-                onChange={(e) =>
-                  setEditedFlashcard((prev) =>
-                    prev
-                      ? { ...prev, guessed_correct_last_time: e.target.checked }
-                      : prev
-                  )
-                }
-              />
-            }
-            label="Guessed Correct Last Time"
-          />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenEditDialog(false)}>Cancel</Button>

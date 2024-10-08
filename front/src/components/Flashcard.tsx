@@ -14,8 +14,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  FormControlLabel,
-  Checkbox,
   IconButton,
 } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -29,8 +27,7 @@ const Flashcard = ({ flashcard, onUpdate }) => {
   const [editedFlashcard, setEditedFlashcard] = useState({
     german_word: flashcard.german_word,
     english_translation: flashcard.english_translation,
-    hardness_level: flashcard.hardness_level,
-    guessed_correct_last_time: flashcard.guessed_correct_last_time,
+    status: flashcard.status,
   })
 
   const handleFlip = () => {
@@ -60,10 +57,10 @@ const Flashcard = ({ flashcard, onUpdate }) => {
     }
   }
   // @ts-expect-error desc
-  const handleHardnessLevelChange = (e) => {
+  const handleStatusChange = (e) => {
     setEditedFlashcard({
       ...editedFlashcard,
-      hardness_level: e.target.value,
+      status: e.target.value,
     })
   }
 
@@ -157,19 +154,19 @@ const Flashcard = ({ flashcard, onUpdate }) => {
             }
           />
           <FormControl fullWidth margin="dense">
-            <InputLabel id="edit-hardness-level-label">
-              Hardness Level
+            <InputLabel id="edit-status-label">
+              Staus
             </InputLabel>
             <Select
-              labelId="edit-hardness-level-label"
-              value={editedFlashcard.hardness_level}
-              label="Hardness Level"
-              onChange={handleHardnessLevelChange}
+              labelId="edit-status-label"
+              value={editedFlashcard.status}
+              label="Status"
+              onChange={handleStatusChange}
               style={{
                 backgroundColor:
-                  editedFlashcard.hardness_level === 'hard'
+                  editedFlashcard.status === 'hard'
                     ? 'red'
-                    : editedFlashcard.hardness_level === 'medium'
+                    : editedFlashcard.status === 'medium'
                       ? 'yellow'
                       : 'green',
               }}
@@ -177,22 +174,9 @@ const Flashcard = ({ flashcard, onUpdate }) => {
               <MenuItem value="easy">Easy</MenuItem>
               <MenuItem value="medium">Medium</MenuItem>
               <MenuItem value="hard">Hard</MenuItem>
+              <MenuItem value="fail">Hard</MenuItem>
             </Select>
           </FormControl>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={editedFlashcard.guessed_correct_last_time}
-                onChange={(e) =>
-                  setEditedFlashcard({
-                    ...editedFlashcard,
-                    guessed_correct_last_time: e.target.checked,
-                  })
-                }
-              />
-            }
-            label="Guessed Correct Last Time"
-          />
         </DialogContent>
         <MuiDialogActions>
           <Button onClick={() => setOpenEditDialog(false)}>Cancel</Button>

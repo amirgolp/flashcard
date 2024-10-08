@@ -13,8 +13,7 @@ async def test_create_flashcard(client: AsyncClient, fake_data):
         "german_word": fake_data.word(),
         "english_translation": fake_data.word(),
         "decks": [deck_title],
-        "hardness_level": "medium",
-        "guessed_correct_last_time": False,
+        "status": "medium",
     }
     response = await client.post("/v1/flashcards/", json=flashcard_data)
     assert response.status_code == 201

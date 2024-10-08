@@ -21,9 +21,11 @@ async def get_flashcard_by_id(id: str, db):
     return flashcard
 
 
-async def get_all_flashcards(db):
+async def get_all_flashcards(db, filters: dict = None, skip: int = 0, limit: int = 10):
+    if not filters:
+        filters = {}
     flashcards = []
-    async for flashcard in db.flashcards.find():
+    async for flashcard in db.flashcards.find(filters).skip(skip).limit(limit):
         flashcards.append(flashcard)
     return flashcards
 

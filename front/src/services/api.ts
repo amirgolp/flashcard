@@ -13,8 +13,7 @@ export interface Flashcard {
   german_word: string
   english_translation: string
   decks: string[]
-  hardness_level: 'easy' | 'medium' | 'hard'
-  guessed_correct_last_time: boolean
+  status: 'easy' | 'medium' | 'hard' | 'fail'
 }
 
 export const api = {
@@ -39,8 +38,7 @@ export const api = {
     return response.data.filter((card: Flashcard) => card.decks.includes(title))
   },
   createFlashcard: async (flashcard: {
-    guessed_correct_last_time: boolean
-    hardness_level: string
+    status: string
     german_word: string
     english_translation: string
     decks: string[]

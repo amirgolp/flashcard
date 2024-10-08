@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from back.app.schemas.flashcard import (
     FlashcardCreate,
     FlashcardResponse,
-    FlashcardUpdate,
+    FlashcardUpdate, RequiredFilters,
 )
 from back.app.models.flashcard import (
     create_flashcard,
@@ -17,6 +17,7 @@ from back.app.models.deck import get_deck_by_title
 from back.app.core.logger import get_logger
 from bson.objectid import ObjectId
 
+from back.app.schemas.pagination import Pagination
 from back.app.utils.db import get_database
 
 logger = get_logger()
@@ -57,10 +58,21 @@ async def create_flashcard_endpoint(
 
 
 @router.get("/", response_model=List[FlashcardResponse])
-async def get_flashcards_endpoint(db=Depends(get_database)):
-    logger.info("Fetching all flashcards")
+async def get_flashcards_endpoint(
+        required: RequiredFilters = Depends(),
+        pagination: Pagination = Depends(),
+        db=Depends(get_database),
+):
+    logger.info("Fetching flashcards with filters and pagination")
     try:
-        flashcards = await get_all_flashcards(db)
+        filters = {}
+        if required.status:
+            filters["status"] = required.status
+        if required.deck:
+            filters["decks"] = required.deck
+
+        skip = (pagination.page - 1) * pagination.page_size
+        flashcards = await get_all_flashcards(db, filters, skip=skip, limit=pagination.page_size)
         for flashcard in flashcards:
             flashcard["id"] = str(flashcard["_id"])
         return [FlashcardResponse(**flashcard) for flashcard in flashcards]
