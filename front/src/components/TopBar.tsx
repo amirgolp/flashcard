@@ -7,37 +7,34 @@ import {
   Autocomplete,
   IconButton,
 } from '@mui/material'
-import { api, Deck } from '../services/api'
 import { useNavigate } from 'react-router-dom'
 import MenuIcon from '@mui/icons-material/Menu'
+import { useDecks } from '../services/api'
+import { Deck } from '../types'
 
 interface TopBarProps {
   onMenuClick: () => void
 }
 
 const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
+  const { data: allDecks = [] } = useDecks()
   const [options, setOptions] = React.useState<Deck[]>([])
   const [inputValue, setInputValue] = React.useState('')
   const navigate = useNavigate()
 
-  const handleInputChange = async (_: never, value: string) => {
+  const handleInputChange = (_: React.SyntheticEvent, value: string) => {
     setInputValue(value)
     if (value) {
-      try {
-        const data = await api.getDecks()
-        const results = data.filter((deck) =>
-          deck.title.toLowerCase().includes(value.toLowerCase())
-        )
-        setOptions(results)
-      } catch (error) {
-        console.error(error)
-      }
+      const results = allDecks.filter((deck) =>
+        deck.title.toLowerCase().includes(value.toLowerCase())
+      )
+      setOptions(results)
     } else {
       setOptions([])
     }
   }
 
-  const handleOptionSelect = (_event: never, value: Deck | null) => {
+  const handleOptionSelect = (_event: React.SyntheticEvent, value: Deck | null) => {
     if (value) {
       navigate(`/decks/${value.title}`)
     }
@@ -56,9 +53,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
           options={options}
           getOptionLabel={(option) => option.title}
           style={{ width: 300 }}
-          // @ts-ignore
           onInputChange={handleInputChange}
-          // @ts-ignore
           onChange={handleOptionSelect}
           inputValue={inputValue}
           renderInput={(params) => (

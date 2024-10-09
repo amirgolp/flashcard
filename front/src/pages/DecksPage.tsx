@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react'
-import { api, Deck } from '../services/api'
+import React, { useState, useEffect } from 'react'
 import {
   Container,
   Typography,
@@ -22,9 +21,14 @@ import {
 import { Delete, PlayArrow, ViewList, GridView } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import Grid from '@mui/material/Grid2'
+import { useDecks, useCreateDeck, useDeleteDeck } from '../services/api'
+import { Deck } from '../types'
 
 const DecksPage: React.FC = () => {
-  const [decks, setDecks] = useState<Deck[]>([])
+  const { data: decks = [], isLoading, error, refetch } = useDecks()
+  const createDeck = useCreateDeck()
+  const deleteDeck = useDeleteDeck()
+
   const [searchTerm, setSearchTerm] = useState('')
   const [searchResults, setSearchResults] = useState<Deck[]>([])
   const [openCreateDialog, setOpenCreateDialog] = useState(false)
@@ -34,44 +38,30 @@ const DecksPage: React.FC = () => {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const fetchDecks = async () => {
-      try {
-        const data = await api.getDecks()
-        setDecks(data.slice(0, 5)) // Limit to 5 decks
-      } catch (error) {
-        console.error(error)
-      }
-    }
-    fetchDecks()
-  }, [])
-
-  const handleSearch = async (term: string) => {
-    setSearchTerm(term)
-    if (term) {
-      try {
-        const data = await api.getDecks()
-        const results = data.filter((deck) =>
-          deck.title.toLowerCase().includes(term.toLowerCase())
-        )
-        setSearchResults(results)
-      } catch (error) {
-        console.error(error)
-      }
+    if (searchTerm) {
+      const results = decks.filter((deck) =>
+        deck.title.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      setSearchResults(results)
     } else {
       setSearchResults([])
     }
+  }, [searchTerm, decks])
+
+  const handleSearch = (term: string) => {
+    setSearchTerm(term)
   }
 
   const handleCreateDeck = async () => {
     try {
-      const newDeck = await api.createDeck({
+      await createDeck.mutateAsync({
         title: newDeckTitle,
         description: newDeckDescription,
       })
-      setDecks((prev) => [newDeck, ...prev].slice(0, 5))
       setOpenCreateDialog(false)
       setNewDeckTitle('')
       setNewDeckDescription('')
+      refetch() // Refresh the decks list
     } catch (error) {
       console.error(error)
       alert('Error creating deck. The title might already exist.')
@@ -79,12 +69,10 @@ const DecksPage: React.FC = () => {
   }
 
   const handleDeleteDeck = async (title: string) => {
-    if (
-      window.confirm(`Are you sure you want to delete the deck "${title}"?`)
-    ) {
+    if (window.confirm(`Are you sure you want to delete the deck "${title}"?`)) {
       try {
-        await api.deleteDeck(title)
-        setDecks((prev) => prev.filter((deck) => deck.title !== title))
+        await deleteDeck.mutateAsync(title)
+        refetch() // Refresh the decks list
       } catch (error) {
         console.error(error)
         alert('Error deleting deck.')
@@ -104,6 +92,9 @@ const DecksPage: React.FC = () => {
       setView(nextView)
     }
   }
+
+  if (isLoading) return <Typography>Loading...</Typography>
+  if (error) return <Typography>Error loading decks.</Typography>
 
   return (
     <Container>
@@ -126,7 +117,6 @@ const DecksPage: React.FC = () => {
         onChange={(e) => handleSearch(e.target.value)}
       />
 
-      {/* Toggle between Gallery and List view */}
       <ToggleButtonGroup
         value={view}
         exclusive
@@ -169,7 +159,6 @@ const DecksPage: React.FC = () => {
         />
       )}
 
-      {/* Create Deck Dialog */}
       <Dialog
         open={openCreateDialog}
         onClose={() => setOpenCreateDialog(false)}
@@ -236,7 +225,6 @@ const GalleryView: React.FC<{
   </Grid>
 )
 
-// List View Component
 const ListView: React.FC<{
   decks: Deck[]
   onDelete: (title: string) => void

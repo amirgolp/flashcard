@@ -5,13 +5,16 @@ import FlashcardsPage from './pages/FlashcardsPage'
 import TopBar from './components/TopBar'
 import Breadcrumbs from './components/Breadcrumbs'
 import { Drawer, List, ListItem, ListItemText } from '@mui/material'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+const queryClient = new QueryClient()
 
 const App: React.FC = () => {
   const [openDrawer, setOpenDrawer] = useState(false)
   const navigate = useNavigate()
 
   return (
-    <>
+    <QueryClientProvider client={queryClient}>
       <TopBar onMenuClick={() => setOpenDrawer(true)} />
       <Drawer
         anchor="left"
@@ -43,7 +46,7 @@ const App: React.FC = () => {
         <Route path="/decks" element={<DecksPage />} />
         <Route path="/decks/:title" element={<FlashcardsPage />} />
       </Routes>
-    </>
+    </QueryClientProvider>
   )
 }
 

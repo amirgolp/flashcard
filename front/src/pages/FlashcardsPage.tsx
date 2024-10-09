@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { api, Flashcard } from '../services/api'
 import {
   Container,
   Typography,
@@ -33,11 +32,16 @@ import {
   Edit,
 } from '@mui/icons-material'
 import './FlashcardsPage.css'
-import Grid from '@mui/material/Grid2'
+import Grid from '@mui/material/Grid'
+import { useFlashcardsByDeck, useCreateFlashcard, useUpdateFlashcard } from '../services/api'
+import { Flashcard } from '../types'
 
 const FlashcardsPage: React.FC = () => {
   const { title } = useParams<{ title: string }>()
-  const [flashcards, setFlashcards] = useState<Flashcard[]>([])
+  const { data: flashcards = [], refetch } = useFlashcardsByDeck(title!)
+  const createFlashcard = useCreateFlashcard()
+  const updateFlashcard = useUpdateFlashcard()
+
   const [view, setView] = useState<'gallery' | 'list' | 'one'>('gallery')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [openAddDialog, setOpenAddDialog] = useState(false)
@@ -47,18 +51,8 @@ const FlashcardsPage: React.FC = () => {
   const [editedFlashcard, setEditedFlashcard] = useState<Flashcard | null>(null)
 
   useEffect(() => {
-    const fetchFlashcards = async () => {
-      if (title) {
-        try {
-          const data = await api.getFlashcardsByDeck(title)
-          setFlashcards(data)
-        } catch (error) {
-          console.error(error)
-        }
-      }
-    }
-    fetchFlashcards()
-  }, [title])
+    refetch() // Fetch flashcards whenever the deck title changes
+  }, [title, refetch])
 
   const handleViewChange = (
     _event: React.MouseEvent<HTMLElement>,
@@ -82,16 +76,16 @@ const FlashcardsPage: React.FC = () => {
   const handleAddFlashcard = async () => {
     if (title) {
       try {
-        const newFlashcard = await api.createFlashcard({
+        await createFlashcard.mutateAsync({
           german_word: newGermanWord,
           english_translation: newEnglishTranslation,
           decks: [title],
-          status: 'medium',
+          status: 'easy',
         })
-        setFlashcards((prev) => [...prev, newFlashcard])
         setOpenAddDialog(false)
         setNewGermanWord('')
         setNewEnglishTranslation('')
+        refetch() // Refresh the flashcards list
       } catch (error) {
         console.error(error)
         alert('Error adding flashcard.')
@@ -107,17 +101,16 @@ const FlashcardsPage: React.FC = () => {
   const handleEditFlashcard = async () => {
     if (editedFlashcard) {
       try {
-        await api.updateFlashcard(editedFlashcard.id, {
-          german_word: editedFlashcard.german_word,
-          english_translation: editedFlashcard.english_translation,
-          status: editedFlashcard.status,
+        await updateFlashcard.mutateAsync({
+          id: editedFlashcard.id,
+          flashcard: {
+            german_word: editedFlashcard.german_word,
+            english_translation: editedFlashcard.english_translation,
+            status: editedFlashcard.status,
+          },
         })
-        setFlashcards((prev) =>
-          prev.map((fc) =>
-            fc.id === editedFlashcard.id ? editedFlashcard : fc
-          )
-        )
         setOpenEditDialog(false)
+        refetch() // Refresh the flashcards list
       } catch (error) {
         console.error(error)
         alert('Error updating flashcard.')
@@ -136,7 +129,6 @@ const FlashcardsPage: React.FC = () => {
         Deck: {title}
       </Typography>
 
-      {/* Add Flashcard Button */}
       <Button
         variant="contained"
         color="primary"
@@ -147,7 +139,6 @@ const FlashcardsPage: React.FC = () => {
         Add Flashcard
       </Button>
 
-      {/* Toggle between Gallery, List, and One-By-One view */}
       <ToggleButtonGroup
         value={view}
         exclusive
@@ -250,21 +241,14 @@ const FlashcardsPage: React.FC = () => {
               onChange={(e) =>
                 setEditedFlashcard((prev) =>
                   prev
-                    ? {
-                        ...prev,
-                        status: e.target.value as
-                          | 'fail'
-                          | 'easy'
-                          | 'medium'
-                          | 'hard',
-                      }
+                    ? { ...prev, status: e.target.value as 'fail' | 'easy' | 'hard' }
                     : prev
                 )
               }
             >
               <MenuItem value="easy">Easy</MenuItem>
-              <MenuItem value="medium">Medium</MenuItem>
               <MenuItem value="hard">Hard</MenuItem>
+              <MenuItem value="fail">Fail</MenuItem>
             </Select>
           </FormControl>
         </DialogContent>
@@ -285,7 +269,7 @@ const GalleryView: React.FC<{
 }> = ({ flashcards, onFlashcardClick }) => (
   <Grid container spacing={3}>
     {flashcards.map((flashcard, index) => (
-      <Grid key={flashcard.id}>
+      <Grid item key={flashcard.id} xs={12} sm={6} md={4}>
         <Card
           onClick={() => onFlashcardClick(index)}
           style={{ cursor: 'pointer' }}
@@ -325,7 +309,6 @@ const OneByOneView: React.FC<{
     setIsFlipped(!isFlipped)
   }
 
-  // Reset flip state when the index changes (next/previous) to always show the front
   useEffect(() => {
     setIsFlipped(false)
   }, [currentIndex])

@@ -1,27 +1,37 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import {
   Card,
   CardContent,
   CardActions,
   Typography,
   Button,
+  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions as MuiDialogActions,
   TextField,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  IconButton,
+  SelectChangeEvent,
 } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/Delete'
-import './Flashcard.css'
-import { api } from '../services/api'
+import { useUpdateFlashcard, useDeleteFlashcard } from '../services/api'
+import { DialogActions as MuiDialogActions } from '@mui/material'
+import { StatusOptions, StatusType } from '../types'
 
-// @ts-expect-error desc
-const Flashcard = ({ flashcard, onUpdate }) => {
+interface FlashcardProps {
+  flashcard: {
+    id: string
+    german_word: string
+    english_translation: string
+    status: StatusType
+  }
+  onUpdate: () => void
+}
+
+const Flashcard: React.FC<FlashcardProps> = ({ flashcard, onUpdate }) => {
   const [showFront, setShowFront] = useState(true)
   const [openEditDialog, setOpenEditDialog] = useState(false)
   const [editedFlashcard, setEditedFlashcard] = useState({
@@ -30,15 +40,28 @@ const Flashcard = ({ flashcard, onUpdate }) => {
     status: flashcard.status,
   })
 
+  const updateFlashcard = useUpdateFlashcard()
+  const deleteFlashcard = useDeleteFlashcard()
+
   const handleFlip = () => {
     setShowFront((prev) => !prev)
   }
 
   const handleEditFlashcard = async () => {
     try {
-      await api.updateFlashcard(flashcard.id, editedFlashcard)
-      setOpenEditDialog(false)
-      onUpdate() // Refresh the flashcards list
+      updateFlashcard.mutate(
+        { id: flashcard.id, flashcard: editedFlashcard },
+        {
+          onSuccess: () => {
+            setOpenEditDialog(false)
+            onUpdate() // Refresh the flashcards list
+          },
+          onError: (error) => {
+            console.error(error)
+            alert('Error updating flashcard.')
+          },
+        }
+      )
     } catch (error) {
       console.error(error)
       alert('Error updating flashcard.')
@@ -48,19 +71,26 @@ const Flashcard = ({ flashcard, onUpdate }) => {
   const handleDeleteFlashcard = async () => {
     if (window.confirm('Are you sure you want to delete this flashcard?')) {
       try {
-        await api.deleteFlashcard(flashcard.id)
-        onUpdate() // Refresh the flashcards list
+        deleteFlashcard.mutate(flashcard.id, {
+          onSuccess: () => {
+            onUpdate()
+          },
+          onError: (error) => {
+            console.error(error)
+            alert('Error deleting flashcard.')
+          },
+        })
       } catch (error) {
         console.error(error)
         alert('Error deleting flashcard.')
       }
     }
   }
-  // @ts-expect-error desc
-  const handleStatusChange = (e) => {
+
+  const handleStatusChange = (e: SelectChangeEvent) => {
     setEditedFlashcard({
       ...editedFlashcard,
-      status: e.target.value,
+      status: e.target.value as StatusType,
     })
   }
 
@@ -124,7 +154,6 @@ const Flashcard = ({ flashcard, onUpdate }) => {
         </IconButton>
       </CardActions>
 
-      {/* Edit Flashcard Dialog */}
       <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
         <DialogTitle>Edit Flashcard</DialogTitle>
         <DialogContent>
@@ -154,9 +183,7 @@ const Flashcard = ({ flashcard, onUpdate }) => {
             }
           />
           <FormControl fullWidth margin="dense">
-            <InputLabel id="edit-status-label">
-              Staus
-            </InputLabel>
+            <InputLabel id="edit-status-label">Status</InputLabel>
             <Select
               labelId="edit-status-label"
               value={editedFlashcard.status}
@@ -166,15 +193,16 @@ const Flashcard = ({ flashcard, onUpdate }) => {
                 backgroundColor:
                   editedFlashcard.status === 'hard'
                     ? 'red'
-                    : editedFlashcard.status === 'medium'
-                      ? 'yellow'
+                    : editedFlashcard.status === 'fail'
+                      ? 'orange'
                       : 'green',
               }}
             >
-              <MenuItem value="easy">Easy</MenuItem>
-              <MenuItem value="medium">Medium</MenuItem>
-              <MenuItem value="hard">Hard</MenuItem>
-              <MenuItem value="fail">Hard</MenuItem>
+              {StatusOptions.map((status) => (
+                <MenuItem key={status} value={status}>
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                </MenuItem>
+              ))}
             </Select>
           </FormControl>
         </DialogContent>
