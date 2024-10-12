@@ -9,7 +9,7 @@ class Flashcard(Document):
     date_created = DateTimeField(default=datetime.utcnow)
     date_modified = DateTimeFielBooleanFieldd(default=datetime.utcnow)
     guessed_correct = BooleanField(default=False)
-    guessed_wrong = (default=False)
+    guessed_wrong = BooleanField(default=False)
     loose_streak = IntField(default=0)
     Favorite = BooleanField(default = False)
 
