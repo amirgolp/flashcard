@@ -34,7 +34,10 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
     }
   }
 
-  const handleOptionSelect = (_event: React.SyntheticEvent, value: Deck | null) => {
+  const handleOptionSelect = (
+    _event: React.SyntheticEvent,
+    value: Deck | null
+  ) => {
     if (value) {
       navigate(`/decks/${value.title}`)
     }
