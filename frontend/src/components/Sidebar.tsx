@@ -12,6 +12,9 @@ import SearchIcon from '@mui/icons-material/Search'
 import AddBoxIcon from '@mui/icons-material/AddBox'
 import ListItemButton from '@mui/material/ListItemButton'
 import Link from './Link'
+import { link } from 'fs'
+import InsertComment from '@mui/icons-material/InsertComment'
+import { MenuBookOutlined, ModeOutlined } from '@mui/icons-material'
 
 const drawerWidth = 240
 
@@ -56,6 +59,17 @@ const Sidebar: React.FC = () => {
             <ListItemText primary="Add Flashcard" />
           </ListItemButton>
         </ListItem>
+
+        {/* Review Mistakes */}
+        <ListItem disablePadding>
+          <ListItemButton component={Link} to="/mistakes">
+            <ListItemIcon>
+              <MenuBookOutlined/>
+            </ListItemIcon>
+            <ListItemText primary ="Review Mistakes"/>
+          </ListItemButton>
+        </ListItem>
+      
       </List>
     </Drawer>
   )

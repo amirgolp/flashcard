@@ -9,7 +9,7 @@ import Topbar from './components/Topbar'
 import Sidebar from './components/Sidebar'
 import AddFlashcard from './components/AddFlashcard'
 import SearchFlashcards from './components/SearchFlashcards'
-
+import ReviewMistakes from './components/ReviewMistakes'
 import { SearchContext } from './context/SearchContext'
 
 const fetchFlashcards = async (
@@ -121,6 +121,7 @@ const App: React.FC = () => {
           <Route path="/search" element={<SearchFlashcards setSearchQuery={function(query: string): void {
                       throw new Error(`{query}: ${query} is not used.`)
                   } } />} />
+          <Route path="/mistakes" element={<ReviewMistakes/>}/>
           {/* Add more routes as needed */}
         </Routes>
       </Box>
