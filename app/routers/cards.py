@@ -4,9 +4,8 @@ from .. import schemas, crud
 from ..database import get_db
 from ..models import User
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
-from ..utils.token import verify_token, SECRET_KEY, ALGORITHM
-from ..schemas import TokenData
+from jose import JWTError
+from ..utils.token import verify_token
 
 router = APIRouter(prefix="/cards", tags=["cards"])
 

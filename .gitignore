@@ -1,5 +1,5 @@
 .venv
 *.egg-info
 
-.env
-uv.lock
+*.env
+*uv.lock
