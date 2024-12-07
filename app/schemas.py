@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr, constr
 
 
 class HardnessLevel(str, Enum):
@@ -10,6 +10,35 @@ class HardnessLevel(str, Enum):
     HARD = "hard"
 
 
+# User Schemas
+class UserBase(BaseModel):
+    username: str
+    email: EmailStr
+
+
+class UserCreate(UserBase):
+    password: constr(min_length=8)
+
+
+class UserOut(UserBase):
+    id: str
+    date_created: datetime
+
+    class Config:
+        orm_mode = True
+
+
+# Token Schemas
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    username: Optional[str] = None
+
+
+# Existing Card and Deck Schemas
 class CardBase(BaseModel):
     front: str
     back: str
@@ -46,7 +75,9 @@ class DeckBase(BaseModel):
 
 
 class DeckCreate(DeckBase):
-    card_ids: List[str] = Field(default_factory=lambda: list)
+    card_ids: list[str] = Field(
+        default_factory=lambda: list, description="List of card ids"
+    )
 
 
 class DeckUpdate(BaseModel):
@@ -57,10 +88,10 @@ class DeckUpdate(BaseModel):
 
 class Deck(DeckBase):
     id: str
-    cards: List[Card] = Field(default_factory=lambda: list)
+    cards: List[Card] = Field(default_factory=lambda: list, description="List of cards")
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 class SearchResponse(BaseModel):
