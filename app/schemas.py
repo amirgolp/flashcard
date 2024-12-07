@@ -25,7 +25,7 @@ class UserOut(UserBase):
     date_created: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Token Schemas
@@ -91,7 +91,7 @@ class Deck(DeckBase):
     cards: List[Card] = Field(default_factory=lambda: list, description="List of cards")
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class SearchResponse(BaseModel):

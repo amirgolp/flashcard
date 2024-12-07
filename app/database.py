@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import os
 from typing import Generator
 
-load_dotenv(dotenv_path=".env")
+load_dotenv(dotenv_path="app/.env")
 
 
 def connect_db(alias: str = "default"):

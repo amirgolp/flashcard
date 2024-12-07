@@ -6,9 +6,8 @@ from mongoengine import (
     ReferenceField,
     EnumField,
     CASCADE,
-    signals,
 )
-from datetime import datetime, timezone
+from datetime import datetime
 from .schemas import HardnessLevel
 import bcrypt
 
@@ -17,19 +16,20 @@ class User(Document):
     username = StringField(required=True, unique=True)
     email = StringField(required=True, unique=True)
     hashed_password = StringField(required=True)
-    date_created = DateTimeField(default=datetime.now(tz=timezone.utc))
+    date_created = DateTimeField(default=datetime.utcnow)
 
-    meta = {"indexes": ["username", "email"]}
+    meta = {
+        'indexes': [
+            'username',
+            'email'
+        ]
+    }
 
     def set_password(self, password: str):
-        self.hashed_password = bcrypt.hashpw(
-            password.encode("utf-8"), bcrypt.gensalt()
-        ).decode("utf-8")
+        self.hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     def check_password(self, password: str) -> bool:
-        return bcrypt.checkpw(
-            password.encode("utf-8"), self.hashed_password.encode("utf-8")
-        )
+        return bcrypt.checkpw(password.encode('utf-8'), self.hashed_password.encode('utf-8'))
 
 
 class Card(Document):
@@ -44,27 +44,22 @@ class Card(Document):
     owner = ReferenceField(User, required=True, reverse_delete_rule=CASCADE)
 
     meta = {
-        "indexes": [
+        'indexes': [
             {
-                "fields": [
-                    "$front",
-                    "$back",
-                    "$example_original",
-                    "$example_translation",
-                ],
-                "default_language": "english",
-                "weights": {
-                    "front": 10,
-                    "back": 8,
-                    "example_original": 5,
-                    "example_translation": 5,
-                },
+                'fields': ['$front', '$back', '$example_original', '$example_translation'],
+                'default_language': 'english',
+                'weights': {
+                    'front': 10,
+                    'back': 8,
+                    'example_original': 5,
+                    'example_translation': 5
+                }
             }
         ]
     }
 
     def clean(self):
-        self.last_edited = datetime.now(tz=timezone.utc)
+        self.last_edited = datetime.utcnow()
 
 
 class Deck(Document):
@@ -75,12 +70,9 @@ class Deck(Document):
     last_edited = DateTimeField(default=datetime.utcnow)
     owner = ReferenceField(User, required=True, reverse_delete_rule=CASCADE)
 
-    meta = {"indexes": ["name"]}
+    meta = {
+        'indexes': ['name']
+    }
 
     def clean(self):
-        self.last_edited = datetime.now(tz=timezone.utc)
-
-
-# Signal to update 'last_edited' before saving
-signals.pre_save.connect(Deck.clean, sender=Deck)
-signals.pre_save.connect(Card.clean, sender=Card)
+        self.last_edited = datetime.utcnow()
