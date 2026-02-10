@@ -10,7 +10,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register", response_model=schemas.UserOut)
 def register(user_create: schemas.UserCreate, db: str = Depends(get_db)):
-    user = crud.get_user_by_username(user_create.username, db)
+    user = crud.get_user_by_usersurfacename(user_create.username, db)
     if user:
         raise HTTPException(status_code=400, detail="Username already registered")
     user = crud.get_user_by_email(user_create.email, db)
