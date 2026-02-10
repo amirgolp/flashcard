@@ -48,7 +48,6 @@ def authenticate_user(
     return user
 
 
-# Existing Deck CRUD Operations with Ownership Enforcement
 def create_deck(
     deck: schemas.DeckCreate, db: str = "default", owner: User = None
 ) -> schemas.Deck:
@@ -180,7 +179,6 @@ def list_decks(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Similar CRUD functions for Card with ownership enforcement
 def create_card(
     card: schemas.CardCreate, db: str = "default", owner: User = None
 ) -> schemas.Card:
