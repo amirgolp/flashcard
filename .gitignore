@@ -98,3 +98,8 @@ instance/
 *.pid
 
 __pycache__
+
+.agents/
+.claude/
+
+.env

@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from .routers import decks, cards, search, auth
+from .routers import decks, cards, search, auth, books, generation, storage
 from .utils.logger import logger
 from .exceptions import http_exception_handler
 from fastapi.exceptions import RequestValidationError, HTTPException
@@ -10,6 +10,21 @@ app = FastAPI(
     title="Flashcard API",
     description="API for managing flashcards and decks with user authentication",
     version="0.1.0",
+)
+
+origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -27,6 +42,9 @@ app.include_router(auth.router)
 app.include_router(decks.router)
 app.include_router(cards.router)
 app.include_router(search.router)
+app.include_router(books.router)
+app.include_router(generation.router)
+app.include_router(storage.router)
 
 
 @app.exception_handler(HTTPException)

@@ -1,0 +1,231 @@
+"""
+File storage adapters for Telegram and Google Drive.
+Allows users to configure which storage backend to use.
+"""
+from abc import ABC, abstractmethod
+from typing import Optional, BinaryIO
+import os
+import requests
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
+import io
+
+
+class StorageAdapter(ABC):
+    """Abstract base class for storage adapters"""
+    
+    @abstractmethod
+    def upload_file(self, file_data: bytes, filename: str, user_id: str) -> str:
+        """Upload a file and return the file identifier"""
+        pass
+    
+    @abstractmethod
+    def download_file(self, file_id: str) -> bytes:
+        """Download a file by its identifier"""
+        pass
+    
+    @abstractmethod
+    def delete_file(self, file_id: str) -> bool:
+        """Delete a file by its identifier"""
+        pass
+    
+    @abstractmethod
+    def get_file_info(self, file_id: str) -> dict:
+        """Get file metadata"""
+        pass
+
+
+class TelegramStorageAdapter(StorageAdapter):
+    """
+    Storage adapter using Telegram Bot API.
+    Files are stored in the user's Telegram account via their bot.
+    """
+    
+    def __init__(self, bot_token: str):
+        self.bot_token = bot_token
+        self.base_url = f"https://api.telegram.org/bot{bot_token}"
+    
+    def upload_file(self, file_data: bytes, filename: str, user_id: str) -> str:
+        """
+        Upload file to Telegram using user's bot token.
+        Returns the file_id from Telegram.
+        
+        Args:
+            file_data: Binary file content
+            filename: Original filename
+            user_id: Telegram user ID (chat_id for saved messages)
+        
+        Returns:
+            Telegram file_id
+        """
+        url = f"{self.base_url}/sendDocument"
+        
+        files = {
+            'document': (filename, file_data, 'application/pdf')
+        }
+        data = {
+            'chat_id': user_id,  # User's own chat_id for Saved Messages
+            'caption': f'Flashcard Book: {filename}'
+        }
+        
+        response = requests.post(url, files=files, data=data)
+        response.raise_for_status()
+        
+        result = response.json()
+        if result.get('ok'):
+            file_id = result['result']['document']['file_id']
+            return file_id
+        else:
+            raise Exception(f"Telegram upload failed: {result.get('description')}")
+    
+    def download_file(self, file_id: str) -> bytes:
+        """Download file from Telegram"""
+        # First, get file path
+        url = f"{self.base_url}/getFile"
+        response = requests.post(url, data={'file_id': file_id})
+        response.raise_for_status()
+        
+        result = response.json()
+        if result.get('ok'):
+            file_path = result['result']['file_path']
+            
+            # Download the file
+            download_url = f"https://api.telegram.org/file/bot{self.bot_token}/{file_path}"
+            file_response = requests.get(download_url)
+            file_response.raise_for_status()
+            
+            return file_response.content
+        else:
+            raise Exception(f"Telegram download failed: {result.get('description')}")
+    
+    def delete_file(self, file_id: str) -> bool:
+        """
+        Note: Telegram doesn't support deleting messages via Bot API easily.
+        This is a limitation. We'll mark as deleted in our DB instead.
+        """
+        # Telegram Bot API doesn't support deleteMessage for documents easily
+        # We handle deletion at the application level
+        return True
+    
+    def get_file_info(self, file_id: str) -> dict:
+        """Get file metadata from Telegram"""
+        url = f"{self.base_url}/getFile"
+        response = requests.post(url, data={'file_id': file_id})
+        response.raise_for_status()
+        
+        result = response.json()
+        if result.get('ok'):
+            return {
+                'file_id': result['result']['file_id'],
+                'file_size': result['result'].get('file_size', 0),
+                'file_path': result['result'].get('file_path', '')
+            }
+        else:
+            raise Exception(f"Failed to get file info: {result.get('description')}")
+
+
+class GoogleDriveStorageAdapter(StorageAdapter):
+    """
+    Storage adapter using Google Drive API.
+    Files are stored in the user's Google Drive.
+    """
+    
+    def __init__(self, credentials_dict: dict):
+        """
+        Initialize with user's OAuth credentials.
+        
+        Args:
+            credentials_dict: Dict containing access_token, refresh_token, etc.
+        """
+        self.credentials = Credentials.from_authorized_user_info(credentials_dict)
+        self.service = build('drive', 'v3', credentials=self.credentials)
+    
+    def upload_file(self, file_data: bytes, filename: str, user_id: str) -> str:
+        """
+        Upload file to Google Drive.
+        
+        Args:
+            file_data: Binary file content
+            filename: Original filename
+            user_id: User ID (for organizing in Drive, optional)
+        
+        Returns:
+            Google Drive file_id
+        """
+        file_metadata = {
+            'name': filename,
+            'mimeType': 'application/pdf',
+            'description': f'Flashcard book uploaded by user {user_id}'
+        }
+        
+        media = MediaIoBaseUpload(
+            io.BytesIO(file_data),
+            mimetype='application/pdf',
+            resumable=True
+        )
+        
+        file = self.service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id, name, size, createdTime'
+        ).execute()
+        
+        return file.get('id')
+    
+    def download_file(self, file_id: str) -> bytes:
+        """Download file from Google Drive"""
+        request = self.service.files().get_media(fileId=file_id)
+        
+        file_buffer = io.BytesIO()
+        downloader = MediaIoBaseDownload(file_buffer, request)
+        
+        done = False
+        while not done:
+            status, done = downloader.next_chunk()
+        
+        file_buffer.seek(0)
+        return file_buffer.read()
+    
+    def delete_file(self, file_id: str) -> bool:
+        """Delete file from Google Drive"""
+        try:
+            self.service.files().delete(fileId=file_id).execute()
+            return True
+        except Exception as e:
+            print(f"Error deleting file: {e}")
+            return False
+    
+    def get_file_info(self, file_id: str) -> dict:
+        """Get file metadata from Google Drive"""
+        file = self.service.files().get(
+            fileId=file_id,
+            fields='id, name, size, createdTime, mimeType'
+        ).execute()
+        
+        return {
+            'file_id': file.get('id'),
+            'file_name': file.get('name'),
+            'file_size': int(file.get('size', 0)),
+            'created_time': file.get('createdTime'),
+            'mime_type': file.get('mimeType')
+        }
+
+
+def get_storage_adapter(storage_type: str, config: dict) -> StorageAdapter:
+    """
+    Factory function to get the appropriate storage adapter.
+    
+    Args:
+        storage_type: 'telegram' or 'google_drive'
+        config: Configuration dict specific to the storage type
+    
+    Returns:
+        StorageAdapter instance
+    """
+    if storage_type == 'telegram':
+        return TelegramStorageAdapter(bot_token=config['bot_token'])
+    elif storage_type == 'google_drive':
+        return GoogleDriveStorageAdapter(credentials_dict=config['credentials'])
+    else:
+        raise ValueError(f"Unknown storage type: {storage_type}")
