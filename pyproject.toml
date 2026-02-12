@@ -21,5 +21,9 @@ dependencies = [
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.uv]
-scripts = ["app/main.py"]
+[tool.poe]
+executor = { type = "simple" }
+
+[tool.poe.tasks]
+api = "uvicorn app.main:app --reload"
+gui = { shell = "cd gui && npm run dev" }

@@ -11,6 +11,7 @@ export default defineConfig({
       '/books': 'http://localhost:8000',
       '/generate': 'http://localhost:8000',
       '/search': 'http://localhost:8000',
+      '/storage': 'http://localhost:8000',
     },
   },
 })

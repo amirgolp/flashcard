@@ -6,7 +6,7 @@ from .. import schemas, models
 from ..database import get_db
 from ..models import User, Book
 from ..utils.token import get_current_user
-from ..utils.storage_adapter import get_storage_adapter
+from ..utils.storage_adapter import get_storage_adapter, AppDriveStorageAdapter
 from ..utils.gemini import get_pdf_page_count
 
 router = APIRouter(prefix="/books", tags=["books"])
@@ -35,13 +35,6 @@ async def upload_book(
     file_bytes = await file.read()
     file_size = len(file_bytes)
     
-    # Check storage configuration
-    if not current_user.storage_config or not current_user.storage_config.storage_type:
-        raise HTTPException(
-            status_code=400,
-            detail="Storage not configured. Please configure Telegram or Google Drive storage in settings."
-        )
-    
     # Validate file size against tier limit
     if file_size > current_user.max_storage_bytes:
         max_mb = current_user.max_storage_bytes / 1024 / 1024
@@ -49,14 +42,14 @@ async def upload_book(
             status_code=413,
             detail=f"File too large. Maximum size for your tier is {max_mb:.0f} MB"
         )
-    
+
     # Check quota: file count
     if current_user.file_count >= current_user.max_files:
         raise HTTPException(
             status_code=400,
             detail=f"File limit reached ({current_user.max_files} files). Delete some files or upgrade your plan."
         )
-    
+
     # Check quota: storage space
     if current_user.storage_used_bytes + file_size > current_user.max_storage_bytes:
         remaining_mb = (current_user.max_storage_bytes - current_user.storage_used_bytes) / 1024 / 1024
@@ -64,40 +57,48 @@ async def upload_book(
             status_code=400,
             detail=f"Insufficient storage space. You have {remaining_mb:.2f} MB remaining."
         )
-    
+
     try:
         # Get PDF page count
         total_pages = get_pdf_page_count(file_bytes)
-        
-        # Get storage adapter
-        storage_type = current_user.storage_config.storage_type
-        
-        if storage_type == 'telegram':
-            config = {
-                'bot_token': current_user.storage_config.telegram_bot_token
-            }
-            adapter = get_storage_adapter('telegram', config)
-            # Upload to Telegram
-            file_id = adapter.upload_file(
-                file_bytes,
-                file.filename,
-                current_user.storage_config.telegram_user_id
-            )
-        elif storage_type == 'google_drive':
-            config = {
-                'credentials': current_user.storage_config.google_credentials
-            }
-            adapter = get_storage_adapter('google_drive', config)
-            # Upload to Google Drive
-            file_id = adapter.upload_file(
-                file_bytes,
-                file.filename,
-                str(current_user.id)
-            )
+
+        # Determine storage: user-configured or app-managed fallback
+        user_has_storage = (
+            current_user.storage_config
+            and current_user.storage_config.storage_type
+            and (current_user.storage_config.telegram_bot_token or current_user.storage_config.google_credentials)
+        )
+
+        if user_has_storage:
+            storage_type = current_user.storage_config.storage_type
+            if storage_type == 'telegram':
+                adapter = get_storage_adapter('telegram', {
+                    'bot_token': current_user.storage_config.telegram_bot_token
+                })
+                file_id = adapter.upload_file(
+                    file_bytes, file.filename,
+                    current_user.storage_config.telegram_user_id
+                )
+            elif storage_type == 'google_drive':
+                adapter = get_storage_adapter('google_drive', {
+                    'credentials': current_user.storage_config.google_credentials
+                })
+                file_id = adapter.upload_file(
+                    file_bytes, file.filename, str(current_user.id)
+                )
+            else:
+                raise HTTPException(status_code=500, detail=f"Unsupported storage type: {storage_type}")
         else:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Unsupported storage type: {storage_type}"
+            # Fallback: app-managed Google Drive via service account
+            app_adapter = AppDriveStorageAdapter.get_instance()
+            if app_adapter is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No storage available. Please configure Telegram or Google Drive in Settings."
+                )
+            storage_type = 'app_drive'
+            file_id = app_adapter.upload_file(
+                file_bytes, file.filename, str(current_user.id)
             )
         
         # Create book record
@@ -211,33 +212,30 @@ async def download_book(
         if book.storage_type == 'gridfs' or (book.file and not book.storage_file_id):
             file_data = book.file.read()
         else:
-            # Use storage adapter
             storage_type = book.storage_type
-            
             if storage_type == 'telegram':
-                config = {
+                adapter = get_storage_adapter('telegram', {
                     'bot_token': current_user.storage_config.telegram_bot_token
-                }
-                adapter = get_storage_adapter('telegram', config)
+                })
             elif storage_type == 'google_drive':
-                config = {
+                adapter = get_storage_adapter('google_drive', {
                     'credentials': current_user.storage_config.google_credentials
-                }
-                adapter = get_storage_adapter('google_drive', config)
+                })
+            elif storage_type == 'app_drive':
+                adapter = get_storage_adapter('app_drive', {})
             else:
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Unsupported storage type: {storage_type}"
-                )
-            
+                raise HTTPException(status_code=500, detail=f"Unsupported storage type: {storage_type}")
+
             file_data = adapter.download_file(book.storage_file_id)
-        
+
         return StreamingResponse(
             io.BytesIO(file_data),
             media_type="application/pdf",
             headers={"Content-Disposition": f"attachment; filename={book.filename}"}
         )
-    
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
 
@@ -304,36 +302,37 @@ async def delete_book(
     try:
         # Delete from storage
         if book.storage_type == 'gridfs' or (book.file and not book.storage_file_id):
-            # Legacy GridFS - file will be deleted with book
-            pass
+            pass  # Legacy GridFS - file deleted with book document
         elif book.storage_file_id:
-            # Use storage adapter to delete
             storage_type = book.storage_type
-            
             if storage_type == 'telegram':
-                config = {
+                adapter = get_storage_adapter('telegram', {
                     'bot_token': current_user.storage_config.telegram_bot_token
-                }
-                adapter = get_storage_adapter('telegram', config)
-                adapter.delete_file(book.storage_file_id)
+                })
             elif storage_type == 'google_drive':
-                config = {
+                adapter = get_storage_adapter('google_drive', {
                     'credentials': current_user.storage_config.google_credentials
-                }
-                adapter = get_storage_adapter('google_drive', config)
+                })
+            elif storage_type == 'app_drive':
+                adapter = get_storage_adapter('app_drive', {})
+            else:
+                adapter = None
+            if adapter:
                 adapter.delete_file(book.storage_file_id)
-        
+
         # Delete book record (cascades to progress, draft cards, etc.)
         book.delete(using=db)
-        
+
         # Update user quota
         if file_size > 0:
             current_user.storage_used_bytes = max(0, current_user.storage_used_bytes - file_size)
             current_user.file_count = max(0, current_user.file_count - 1)
             current_user.save(using=db)
-        
+
         return {"detail": "Book and associated data deleted successfully"}
-    
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
 

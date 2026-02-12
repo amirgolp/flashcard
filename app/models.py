@@ -81,7 +81,7 @@ class Book(Document):
     
     # External storage (Telegram or Google Drive)
     storage_file_id = StringField()  # Telegram file_id or Google Drive file_id
-    storage_type = StringField(choices=['telegram', 'google_drive', 'gridfs'])  # Keep gridfs for backwards compat
+    storage_type = StringField(choices=['telegram', 'google_drive', 'app_drive', 'gridfs'])
     file = FileField(collection_name="books_fs")  # Legacy GridFS, will be deprecated
     
     target_language = StringField()

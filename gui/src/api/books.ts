@@ -20,7 +20,7 @@ export async function uploadBook(
   if (targetLanguage) formData.append('target_language', targetLanguage);
   if (nativeLanguage) formData.append('native_language', nativeLanguage);
 
-  const { data } = await apiClient.post<BookResponse>('/books/', formData);
+  const { data } = await apiClient.post<BookResponse>('/books/upload', formData);
   return data;
 }
 

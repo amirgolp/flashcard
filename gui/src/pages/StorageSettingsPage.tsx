@@ -15,94 +15,34 @@ import TelegramIcon from '@mui/icons-material/Telegram';
 import CloudIcon from '@mui/icons-material/Cloud';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InfoIcon from '@mui/icons-material/Info';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchWithAuth } from '../../utils/api';
-import type { StorageQuota, StorageConfig, TelegramStorageConfig, GoogleDriveAuthResponse } from '../../types';
-
-interface StorageQuota {
-    used_bytes: number;
-    max_bytes: number;
-    file_count: number;
-    max_files: number;
-    subscription_tier: string;
-}
-
-interface StorageConfig {
-    storage_type: string | null;
-    is_configured: boolean;
-    quota: StorageQuota;
-}
+import {
+    useStorageConfig,
+    useConfigureTelegram,
+    useInitiateGoogleDriveAuth,
+    useDisconnectStorage,
+} from '../hooks/useStorage';
 
 export default function StorageSettingsPage() {
     const [activeTab, setActiveTab] = useState(0);
     const [telegramToken, setTelegramToken] = useState('');
     const [telegramUserId, setTelegramUserId] = useState('');
-    const queryClient = useQueryClient();
 
-    // Fetch storage config
-    const { data: config, isLoading } = useQuery<StorageConfig>({
-        queryKey: ['storage', 'config'],
-        queryFn: async () => {
-            const response = await fetchWithAuth('/storage/config');
-            if (!response.ok) throw new Error('Failed to fetch config');
-            return response.json();
-        },
-    });
-
-    // Configure Telegram mutation
-    const telegramMutation = useMutation({
-        mutationFn: async (data: { bot_token: string; user_id: string }) => {
-            const response = await fetchWithAuth('/storage/configure/telegram', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            });
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Configuration failed');
-            }
-            return response.json();
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['storage', 'config'] });
-            setTelegramToken('');
-            setTelegramUserId('');
-        },
-    });
-
-    // Google Drive auth mutation
-    const googleDriveMutation = useMutation<GoogleDriveAuthResponse>({
-        mutationFn: async () => {
-            const response = await fetchWithAuth('/storage/configure/google-drive/auth');
-            if (!response.ok) throw new Error('Failed to initiate OAuth');
-            return response.json();
-        },
-        onSuccess: (data) => {
-            // Redirect to Google OAuth
-            window.location.href = data.authorization_url;
-        },
-    });
-
-    // Disconnect storage mutation
-    const disconnectMutation = useMutation({
-        mutationFn: async () => {
-            const response = await fetchWithAuth('/storage/disconnect', {
-                method: 'POST',
-            });
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Failed to disconnect');
-            }
-            return response.json();
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['storage', 'config'] });
-        },
-    });
+    const { data: config, isLoading } = useStorageConfig();
+    const telegramMutation = useConfigureTelegram();
+    const googleDriveMutation = useInitiateGoogleDriveAuth();
+    const disconnectMutation = useDisconnectStorage();
 
     const handleTelegramSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        telegramMutation.mutate({ bot_token: telegramToken, user_id: telegramUserId });
+        telegramMutation.mutate(
+            { bot_token: telegramToken, user_id: telegramUserId },
+            {
+                onSuccess: () => {
+                    setTelegramToken('');
+                    setTelegramUserId('');
+                },
+            },
+        );
     };
 
     const usedPercentage = config
@@ -126,8 +66,8 @@ export default function StorageSettingsPage() {
                 Storage Settings
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-                Configure where your PDF files are stored. Choose between Telegram (your Saved Messages) or
-                Google Drive.
+                By default, your PDF files are stored in the app's central storage. Optionally, connect your
+                own Telegram or Google Drive for personal storage.
             </Typography>
 
             {/* Current Configuration Status */}
@@ -147,7 +87,7 @@ export default function StorageSettingsPage() {
                                         Storage Configured
                                     </Typography>
                                     <Typography variant="body2" color="text.secondary">
-                                        Using: {config.storage_type === 'telegram' ? 'Telegram' : 'Google Drive'}
+                                        Using: {config.storage_type === 'telegram' ? 'Telegram' : config.storage_type === 'google_drive' ? 'Google Drive' : 'App Storage'}
                                     </Typography>
                                 </Box>
                             </Box>
@@ -204,8 +144,8 @@ export default function StorageSettingsPage() {
                             )}
                         </Stack>
                     ) : (
-                        <Alert severity="warning" icon={<InfoIcon />}>
-                            No storage configured. Please choose a storage option below.
+                        <Alert severity="info" icon={<InfoIcon />}>
+                            Using app-managed storage (default). Connect your own Telegram or Google Drive below for personal storage.
                         </Alert>
                     )}
                 </Paper>

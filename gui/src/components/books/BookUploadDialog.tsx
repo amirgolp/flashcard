@@ -8,8 +8,11 @@ import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useUploadBook } from '../../hooks/useBooks';
+import { useStorageConfig } from '../../hooks/useStorage';
 
 interface BookUploadDialogProps {
   open: boolean;
@@ -25,6 +28,9 @@ export default function BookUploadDialog({ open, onClose, onSuccess }: BookUploa
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const upload = useUploadBook();
+  const { data: storageConfig, isLoading: storageLoading } = useStorageConfig();
+
+  const storageConfigured = storageConfig?.is_configured ?? false;
 
   const reset = () => {
     setTitle('');
@@ -78,54 +84,66 @@ export default function BookUploadDialog({ open, onClose, onSuccess }: BookUploa
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>Upload Book</DialogTitle>
       <DialogContent>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-          {error && <Alert severity="error">{error}</Alert>}
+        {storageLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            {!storageConfigured && (
+              <Alert severity="info" icon={<InfoOutlinedIcon />}>
+                Your file will be stored in the app's central storage.
+                You can connect your own Google Drive or Telegram in Settings for personal storage.
+              </Alert>
+            )}
+            {error && <Alert severity="error">{error}</Alert>}
 
-          <input type="file" accept=".pdf" hidden ref={fileInputRef} onChange={handleFileChange} />
-          <Button
-            variant="outlined"
-            startIcon={<CloudUploadIcon />}
-            onClick={() => fileInputRef.current?.click()}
-            disabled={upload.isPending}
-          >
-            {file ? file.name : 'Select PDF File'}
-          </Button>
-          {file && (
-            <Typography variant="caption" color="text.secondary">
-              {(file.size / 1024 / 1024).toFixed(1)} MB
-            </Typography>
-          )}
+            <input type="file" accept=".pdf" hidden ref={fileInputRef} onChange={handleFileChange} />
+            <Button
+              variant="outlined"
+              startIcon={<CloudUploadIcon />}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={upload.isPending}
+            >
+              {file ? file.name : 'Select PDF File'}
+            </Button>
+            {file && (
+              <Typography variant="caption" color="text.secondary">
+                {(file.size / 1024 / 1024).toFixed(1)} MB
+              </Typography>
+            )}
 
-          <TextField
-            required
-            fullWidth
-            label="Book Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            disabled={upload.isPending}
-          />
-          <TextField
-            fullWidth
-            label="Target Language (e.g. German)"
-            value={targetLanguage}
-            onChange={(e) => setTargetLanguage(e.target.value)}
-            disabled={upload.isPending}
-          />
-          <TextField
-            fullWidth
-            label="Native Language (e.g. English)"
-            value={nativeLanguage}
-            onChange={(e) => setNativeLanguage(e.target.value)}
-            disabled={upload.isPending}
-          />
-        </Box>
+            <TextField
+              required
+              fullWidth
+              label="Book Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              disabled={upload.isPending}
+            />
+            <TextField
+              fullWidth
+              label="Target Language (e.g. German)"
+              value={targetLanguage}
+              onChange={(e) => setTargetLanguage(e.target.value)}
+              disabled={upload.isPending}
+            />
+            <TextField
+              fullWidth
+              label="Native Language (e.g. English)"
+              value={nativeLanguage}
+              onChange={(e) => setNativeLanguage(e.target.value)}
+              disabled={upload.isPending}
+            />
+          </Box>
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose} disabled={upload.isPending}>Cancel</Button>
         <Button
           variant="contained"
           onClick={handleSubmit}
-          disabled={!file || !title.trim() || upload.isPending}
+          disabled={storageLoading || !file || !title.trim() || upload.isPending}
         >
           {upload.isPending ? 'Uploading...' : 'Upload'}
         </Button>

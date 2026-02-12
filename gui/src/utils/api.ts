@@ -2,7 +2,7 @@
  * Fetch utility that automatically includes auth token from localStorage
  */
 export async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('access_token');
 
     const headers = new Headers(options.headers || {});
     if (token) {
