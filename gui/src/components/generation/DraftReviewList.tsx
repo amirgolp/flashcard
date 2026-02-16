@@ -5,7 +5,7 @@ import Tab from '@mui/material/Tab';
 import Button from '@mui/material/Button';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import Grid from '@mui/material/Grid';
+import Grid from '@mui/material/Grid2';
 import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
 import Alert from '@mui/material/Alert';
@@ -257,9 +257,9 @@ export default function DraftReviewList({ bookId }: DraftReviewListProps) {
         />
       ) : (
         /* Draft cards grid */
-        <Grid container spacing={2}>
+        <Grid container spacing={3}>
           {drafts.map((draft: DraftCardResponse) => (
-            <Grid size={{ xs: 12, sm: 6, lg: 4 }} key={draft.id}>
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3, xl: 2.4 }} key={draft.id}>
               <DraftReviewCard
                 draft={draft}
                 selected={selectedIds.has(draft.id)}

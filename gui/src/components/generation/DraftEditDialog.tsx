@@ -5,7 +5,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
-import Grid from '@mui/material/Grid';
+import Grid from '@mui/material/Grid2';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
@@ -13,8 +13,15 @@ import Autocomplete from '@mui/material/Autocomplete';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
+import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import TranslateIcon from '@mui/icons-material/Translate';
+import SchoolIcon from '@mui/icons-material/School';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import type { DraftCardResponse, DraftCardUpdate, ExampleSentence } from '../../types';
 
 interface DraftEditDialogProps {
@@ -90,196 +97,255 @@ export default function DraftEditDialog({ open, draft, onClose, onSave, isSaving
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>Edit Draft Card</DialogTitle>
-      <DialogContent dividers>
-        <Grid container spacing={2} sx={{ mt: 0 }}>
-          {/* Core fields */}
-          <Grid size={{ xs: 12 }}>
-            <Typography variant="subtitle2" gutterBottom>Core</Typography>
-          </Grid>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField
-              fullWidth
-              label="Front (word/phrase)"
-              value={front}
-              onChange={(e) => setFront(e.target.value)}
-              multiline
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField
-              fullWidth
-              label="Back (translation)"
-              value={back}
-              onChange={(e) => setBack(e.target.value)}
-              multiline
-            />
-          </Grid>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: { borderRadius: 2 }
+      }}
+    >
+      <DialogTitle sx={{ borderBottom: '1px solid', borderColor: 'divider', pb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box sx={{ p: 1, bgcolor: 'primary.light', borderRadius: 1, color: 'primary.contrastText', display: 'flex' }}>
+            <EditIcon fontSize="small" />
+          </Box>
+          <Typography variant="h6" fontWeight={600}>Edit Flashcard Draft</Typography>
+        </Box>
+      </DialogTitle>
 
-          {/* Linguistics */}
-          <Grid size={{ xs: 12 }}>
-            <Divider sx={{ my: 1 }} />
-            <Typography variant="subtitle2" gutterBottom>Linguistics</Typography>
-          </Grid>
-          <Grid size={{ xs: 12, md: 6, lg: 3 }}>
-            <TextField
-              fullWidth
-              label="Part of Speech"
-              value={partOfSpeech}
-              onChange={(e) => setPartOfSpeech(e.target.value)}
-              placeholder="noun, verb, adjective..."
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 6, lg: 3 }}>
-            <TextField
-              fullWidth
-              label="Gender"
-              value={gender}
-              onChange={(e) => setGender(e.target.value)}
-              placeholder="masculine, feminine, neuter"
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 6, lg: 3 }}>
-            <TextField
-              fullWidth
-              label="Plural Form"
-              value={pluralForm}
-              onChange={(e) => setPluralForm(e.target.value)}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 6, lg: 3 }}>
-            <TextField
-              fullWidth
-              label="Pronunciation"
-              value={pronunciation}
-              onChange={(e) => setPronunciation(e.target.value)}
-              placeholder="IPA or phonetic"
-            />
-          </Grid>
+      <DialogContent sx={{ bgcolor: 'grey.50', p: 3 }}>
+        <Stack spacing={3} sx={{ mt: 1 }}>
 
-          {/* Examples */}
-          <Grid size={{ xs: 12 }}>
-            <Divider sx={{ my: 1 }} />
-            <Typography variant="subtitle2" gutterBottom>Examples</Typography>
-          </Grid>
-          {examples.map((ex, i) => (
-            <Grid size={{ xs: 12 }} key={i}>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+          {/* Core Fields Section */}
+          <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2, borderLeft: '4px solid', borderLeftColor: 'primary.main', bgcolor: 'background.paper' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+              <TranslateIcon color="primary" fontSize="small" />
+              <Typography variant="subtitle2" fontWeight={700} color="text.secondary" sx={{ letterSpacing: 0.5 }}>CORE CONTENT</Typography>
+            </Box>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
-                  sx={{ flex: 1 }}
-                  label={`Sentence ${i + 1}`}
-                  value={ex.sentence}
-                  onChange={(e) => handleExampleChange(i, 'sentence', e.target.value)}
-                  size="small"
+                  fullWidth
+                  label="Front (word/phrase)"
+                  value={front}
+                  onChange={(e) => setFront(e.target.value)}
+                  multiline
+                  variant="outlined"
+                  slotProps={{ inputLabel: { shrink: true } }}
                 />
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
-                  sx={{ flex: 1 }}
-                  label={`Translation ${i + 1}`}
-                  value={ex.translation}
-                  onChange={(e) => handleExampleChange(i, 'translation', e.target.value)}
-                  size="small"
+                  fullWidth
+                  label="Back (translation)"
+                  value={back}
+                  onChange={(e) => setBack(e.target.value)}
+                  multiline
+                  variant="outlined"
+                  slotProps={{ inputLabel: { shrink: true } }}
                 />
-                <IconButton onClick={() => handleRemoveExample(i)} size="small">
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </Box>
+              </Grid>
             </Grid>
-          ))}
-          <Grid size={{ xs: 12 }}>
-            <Button
-              startIcon={<AddIcon />}
-              onClick={handleAddExample}
-              size="small"
-              disabled={examples.length >= 5}
-            >
-              Add Example
-            </Button>
-          </Grid>
+          </Paper>
 
-          {/* Related words */}
-          <Grid size={{ xs: 12 }}>
-            <Divider sx={{ my: 1 }} />
-            <Typography variant="subtitle2" gutterBottom>Related Words</Typography>
-          </Grid>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Autocomplete
-              multiple
-              freeSolo
-              options={[]}
-              value={synonyms}
-              onChange={(_, v) => setSynonyms(v)}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip variant="outlined" label={option} size="small" {...getTagProps({ index })} key={index} />
-                ))
-              }
-              renderInput={(params) => (
-                <TextField {...params} label="Synonyms" placeholder="Type and press Enter" size="small" />
-              )}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Autocomplete
-              multiple
-              freeSolo
-              options={[]}
-              value={antonyms}
-              onChange={(_, v) => setAntonyms(v)}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip variant="outlined" label={option} size="small" {...getTagProps({ index })} key={index} />
-                ))
-              }
-              renderInput={(params) => (
-                <TextField {...params} label="Antonyms" placeholder="Type and press Enter" size="small" />
-              )}
-            />
-          </Grid>
+          {/* Linguistics Section */}
+          <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2, bgcolor: 'background.paper' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+              <SchoolIcon color="action" fontSize="small" />
+              <Typography variant="subtitle2" fontWeight={700} color="text.secondary" sx={{ letterSpacing: 0.5 }}>LINGUISTICS</Typography>
+            </Box>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 6, lg: 3 }}>
+                <TextField
+                  fullWidth
+                  label="Part of Speech"
+                  value={partOfSpeech}
+                  onChange={(e) => setPartOfSpeech(e.target.value)}
+                  placeholder="noun, verb..."
+                  size="small"
+                  slotProps={{ inputLabel: { shrink: true } }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 6, lg: 3 }}>
+                <TextField
+                  fullWidth
+                  label="Gender"
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  placeholder="m, f, n"
+                  size="small"
+                  slotProps={{ inputLabel: { shrink: true } }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 6, lg: 3 }}>
+                <TextField
+                  fullWidth
+                  label="Plural Form"
+                  value={pluralForm}
+                  onChange={(e) => setPluralForm(e.target.value)}
+                  size="small"
+                  slotProps={{ inputLabel: { shrink: true } }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 6, lg: 3 }}>
+                <TextField
+                  fullWidth
+                  label="Pronunciation"
+                  value={pronunciation}
+                  onChange={(e) => setPronunciation(e.target.value)}
+                  placeholder="IPA"
+                  size="small"
+                  slotProps={{ inputLabel: { shrink: true } }}
+                />
+              </Grid>
+            </Grid>
+          </Paper>
 
-          {/* Meta */}
-          <Grid size={{ xs: 12 }}>
-            <Divider sx={{ my: 1 }} />
-            <Typography variant="subtitle2" gutterBottom>Meta</Typography>
-          </Grid>
-          <Grid size={{ xs: 12 }}>
-            <Autocomplete
-              multiple
-              freeSolo
-              options={[]}
-              value={tags}
-              onChange={(_, v) => setTags(v)}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip variant="outlined" label={option} size="small" {...getTagProps({ index })} key={index} />
-                ))
-              }
-              renderInput={(params) => (
-                <TextField {...params} label="Tags" placeholder="Type and press Enter" size="small" />
+          {/* Examples Section */}
+          <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2, bgcolor: 'background.paper' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <MenuBookIcon color="action" fontSize="small" />
+                <Typography variant="subtitle2" fontWeight={700} color="text.secondary" sx={{ letterSpacing: 0.5 }}>CONTEXT & EXAMPLES</Typography>
+              </Box>
+              <Button
+                startIcon={<AddIcon />}
+                onClick={handleAddExample}
+                size="small"
+                disabled={examples.length >= 5}
+              >
+                Add Example
+              </Button>
+            </Box>
+
+            <Stack spacing={2}>
+              {examples.length === 0 && (
+                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', textAlign: 'center', py: 2 }}>
+                  No examples added yet.
+                </Typography>
               )}
-            />
-          </Grid>
-          <Grid size={{ xs: 12 }}>
-            <TextField
-              fullWidth
-              label="Notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              multiline
-              rows={2}
-              size="small"
-            />
-          </Grid>
-        </Grid>
+              {examples.map((ex, i) => (
+                <Box key={i} sx={{ display: 'flex', gap: 1.5, alignItems: 'start', p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
+                  <Chip label={i + 1} size="small" sx={{ height: 24, minWidth: 24 }} />
+                  <Grid container spacing={1} sx={{ flex: 1 }}>
+                    <Grid size={{ xs: 12 }}>
+                      <TextField
+                        fullWidth
+                        placeholder="Example sentence"
+                        value={ex.sentence}
+                        onChange={(e) => handleExampleChange(i, 'sentence', e.target.value)}
+                        size="small"
+                        variant="standard"
+                        slotProps={{ input: { disableUnderline: true, style: { fontWeight: 500 } } }}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <TextField
+                        fullWidth
+                        placeholder="Translation"
+                        value={ex.translation}
+                        onChange={(e) => handleExampleChange(i, 'translation', e.target.value)}
+                        size="small"
+                        variant="standard"
+                        slotProps={{ input: { disableUnderline: true, style: { color: 'text.secondary', fontSize: '0.9em' } } }}
+                      />
+                    </Grid>
+                  </Grid>
+                  <IconButton onClick={() => handleRemoveExample(i)} size="small" color="error" sx={{ opacity: 0.6, '&:hover': { opacity: 1 } }}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              ))}
+            </Stack>
+          </Paper>
+
+          {/* Taxonomy Section */}
+          <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2, bgcolor: 'background.paper' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+              <LocalOfferIcon color="action" fontSize="small" />
+              <Typography variant="subtitle2" fontWeight={700} color="text.secondary" sx={{ letterSpacing: 0.5 }}>TAXONOMY & NOTES</Typography>
+            </Box>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Autocomplete
+                  multiple
+                  freeSolo
+                  options={[]}
+                  value={synonyms}
+                  onChange={(_, v) => setSynonyms(v)}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip variant="outlined" label={option} size="small" {...getTagProps({ index })} key={index} />
+                    ))
+                  }
+                  renderInput={(params) => (
+                    <TextField {...params} label="Synonyms" placeholder="Type..." size="small" />
+                  )}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Autocomplete
+                  multiple
+                  freeSolo
+                  options={[]}
+                  value={antonyms}
+                  onChange={(_, v) => setAntonyms(v)}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip variant="outlined" label={option} size="small" {...getTagProps({ index })} key={index} />
+                    ))
+                  }
+                  renderInput={(params) => (
+                    <TextField {...params} label="Antonyms" placeholder="Type..." size="small" />
+                  )}
+                />
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Autocomplete
+                  multiple
+                  freeSolo
+                  options={[]}
+                  value={tags}
+                  onChange={(_, v) => setTags(v)}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip variant="outlined" label={option} size="small" {...getTagProps({ index })} key={index} />
+                    ))
+                  }
+                  renderInput={(params) => (
+                    <TextField {...params} label="Tags" placeholder="Type..." size="small" />
+                  )}
+                />
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <TextField
+                  fullWidth
+                  label="Notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  multiline
+                  rows={2}
+                  size="small"
+                  variant="outlined"
+                />
+              </Grid>
+            </Grid>
+          </Paper>
+
+        </Stack>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={isSaving}>
+      <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+        <Button onClick={onClose} disabled={isSaving} color="inherit">
           Cancel
         </Button>
         <Button
           variant="contained"
           onClick={handleSave}
           disabled={isSaving || !front.trim() || !back.trim()}
+          disableElevation
+          sx={{ px: 3 }}
         >
           {isSaving ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -287,7 +353,7 @@ export default function DraftEditDialog({ open, draft, onClose, onSave, isSaving
               Saving...
             </Box>
           ) : (
-            'Save'
+            'Save Changes'
           )}
         </Button>
       </DialogActions>

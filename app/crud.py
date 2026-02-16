@@ -189,7 +189,7 @@ def get_deck(
     deck_id: str, db: str = "default", owner: User = None
 ) -> Optional[schemas.Deck]:
     try:
-        deck_doc = Deck.objects.get(id=ObjectId(deck_id), owner=owner).using(db)
+        deck_doc = Deck.objects.using(db).get(id=ObjectId(deck_id), owner=owner)
         return _deck_to_response(deck_doc)
     except Deck.DoesNotExist:
         return None
@@ -204,7 +204,7 @@ def update_deck(
     owner: User = None,
 ) -> Optional[schemas.Deck]:
     try:
-        deck_doc = Deck.objects.get(id=ObjectId(deck_id), owner=owner).using(db)
+        deck_doc = Deck.objects.using(db).get(id=ObjectId(deck_id), owner=owner)
         if deck_update.name is not None:
             deck_doc.name = deck_update.name
         if deck_update.description is not None:
@@ -223,7 +223,7 @@ def update_deck(
 
 def delete_deck(deck_id: str, db: str = "default", owner: User = None) -> bool:
     try:
-        deck_doc = Deck.objects.get(id=ObjectId(deck_id), owner=owner).using(db)
+        deck_doc = Deck.objects.using(db).get(id=ObjectId(deck_id), owner=owner)
         deck_doc.delete(using=db)
         return True
     except Deck.DoesNotExist:
@@ -275,7 +275,7 @@ def get_card(
     card_id: str, db: str = "default", owner: User = None
 ) -> Optional[schemas.Card]:
     try:
-        card_doc = Card.objects.get(id=ObjectId(card_id), owner=owner).using(db)
+        card_doc = Card.objects.using(db).get(id=ObjectId(card_id), owner=owner)
         return _card_to_response(card_doc)
     except Card.DoesNotExist:
         return None
@@ -290,7 +290,7 @@ def update_card(
     owner: User = None,
 ) -> Optional[schemas.Card]:
     try:
-        card_doc = Card.objects.get(id=ObjectId(card_id), owner=owner).using(db)
+        card_doc = Card.objects.using(db).get(id=ObjectId(card_id), owner=owner)
         for field in [
             "front", "back", "example_original", "example_translation",
             "part_of_speech", "gender", "plural_form", "pronunciation",
@@ -317,7 +317,7 @@ def update_card(
 
 def delete_card(card_id: str, db: str = "default", owner: User = None) -> bool:
     try:
-        card_doc = Card.objects.get(id=ObjectId(card_id), owner=owner).using(db)
+        card_doc = Card.objects.using(db).get(id=ObjectId(card_id), owner=owner)
         card_doc.delete(using=db)
         return True
     except Card.DoesNotExist:
@@ -404,7 +404,7 @@ def get_book(
     book_id: str, db: str = "default", owner: User = None
 ) -> Optional[schemas.BookResponse]:
     try:
-        book = Book.objects.get(id=ObjectId(book_id), owner=owner).using(db)
+        book = Book.objects.using(db).get(id=ObjectId(book_id), owner=owner)
         return _book_to_response(book)
     except Book.DoesNotExist:
         return None
@@ -429,7 +429,7 @@ def update_book(
     owner: User = None,
 ) -> Optional[schemas.BookResponse]:
     try:
-        book = Book.objects.get(id=ObjectId(book_id), owner=owner).using(db)
+        book = Book.objects.using(db).get(id=ObjectId(book_id), owner=owner)
         if book_update.title is not None:
             book.title = book_update.title
         if book_update.target_language is not None:
@@ -451,7 +451,7 @@ def update_book(
 
 def delete_book(book_id: str, db: str = "default", owner: User = None) -> bool:
     try:
-        book = Book.objects.get(id=ObjectId(book_id), owner=owner).using(db)
+        book = Book.objects.using(db).get(id=ObjectId(book_id), owner=owner)
         book.file.delete()
         BookProgress.objects(book=book, owner=owner).using(db).delete()
         DraftCard.objects(book=book, owner=owner).using(db).delete()
@@ -469,7 +469,7 @@ def get_or_create_progress(
     book_id: str, db: str = "default", owner: User = None
 ) -> schemas.BookProgressResponse:
     try:
-        book = Book.objects.get(id=ObjectId(book_id), owner=owner).using(db)
+        book = Book.objects.using(db).get(id=ObjectId(book_id), owner=owner)
         progress = BookProgress.objects(book=book, owner=owner).using(db).first()
         if not progress:
             progress = BookProgress(book=book, owner=owner)
@@ -488,8 +488,8 @@ def update_progress(
     owner: User = None,
 ) -> Optional[schemas.BookProgressResponse]:
     try:
-        book = Book.objects.get(id=ObjectId(book_id), owner=owner).using(db)
-        progress = BookProgress.objects.get(book=book, owner=owner).using(db)
+        book = Book.objects.using(db).get(id=ObjectId(book_id), owner=owner)
+        progress = BookProgress.objects.using(db).get(book=book, owner=owner)
         if progress_update.current_page is not None:
             progress.current_page = progress_update.current_page
         if progress_update.current_chapter is not None:
@@ -506,8 +506,8 @@ def add_processed_pages(
     book_id: str, start: int, end: int, db: str = "default", owner: User = None
 ) -> schemas.BookProgressResponse:
     try:
-        book = Book.objects.get(id=ObjectId(book_id), owner=owner).using(db)
-        progress = BookProgress.objects.get(book=book, owner=owner).using(db)
+        book = Book.objects.using(db).get(id=ObjectId(book_id), owner=owner)
+        progress = BookProgress.objects.using(db).get(book=book, owner=owner)
         progress.pages_processed.append(PageRange(start=start, end=end))
         progress.current_page = max(progress.current_page, end + 1)
         # Check chapter completion
@@ -538,8 +538,8 @@ def generate_next_batch(
     db: str = "default", owner: User = None,
 ) -> schemas.GenerationResponse:
     try:
-        book = Book.objects.get(id=ObjectId(book_id), owner=owner).using(db)
-        progress = BookProgress.objects.get(book=book, owner=owner).using(db)
+        book = Book.objects.using(db).get(id=ObjectId(book_id), owner=owner)
+        progress = BookProgress.objects.using(db).get(book=book, owner=owner)
 
         start_page = progress.get_next_unprocessed_page()
         end_page = min(start_page + num_pages - 1, book.total_pages)
@@ -559,7 +559,7 @@ def generate_from_range(
     db: str = "default", owner: User = None,
 ) -> schemas.GenerationResponse:
     try:
-        book = Book.objects.get(id=ObjectId(book_id), owner=owner).using(db)
+        book = Book.objects.using(db).get(id=ObjectId(book_id), owner=owner)
 
         if start_page < 1 or end_page > book.total_pages or start_page > end_page:
             raise HTTPException(status_code=400, detail="Invalid page range")
@@ -573,8 +573,33 @@ def _generate_and_store_drafts(
     book: Book, start_page: int, end_page: int, num_cards: int,
     db: str, owner: User,
 ) -> schemas.GenerationResponse:
-    # 1. Read PDF from GridFS and extract page range
-    full_pdf_bytes = book.file.read()
+    # 1. Read PDF from storage
+    if book.storage_type == 'gridfs' or (book.file and not book.storage_file_id):
+        full_pdf_bytes = book.file.read()
+    else:
+        # Import here to avoid circular imports? Or move import to top if safe. 
+        # Moving import to top might key circular dependency if storage_adapter imports crud/models.
+        # storage_adapter imports get_storage_adapter from .utils.storage_adapter
+        from .utils.storage_adapter import get_storage_adapter, AppDriveStorageAdapter
+        
+        if book.storage_type == 'telegram':
+            adapter = get_storage_adapter('telegram', {
+                'bot_token': book.owner.storage_config.telegram_bot_token
+            })
+        elif book.storage_type == 'google_drive':
+            adapter = get_storage_adapter('google_drive', {
+                'credentials': book.owner.storage_config.google_credentials
+            })
+        elif book.storage_type == 'app_drive':
+            adapter = get_storage_adapter('app_drive', {})
+        else:
+            raise HTTPException(status_code=500, detail=f"Unsupported storage type: {book.storage_type}")
+            
+        full_pdf_bytes = adapter.download_file(book.storage_file_id)
+
+    if not full_pdf_bytes:
+        raise HTTPException(status_code=500, detail="Could not read book file content")
+
     pdf_bytes = extract_page_range_as_pdf(full_pdf_bytes, start_page, end_page)
 
     # 2. Call Gemini
@@ -593,7 +618,10 @@ def _generate_and_store_drafts(
             front=fc.front,
             back=fc.back,
             examples=[
-                ExampleSentence(sentence=ex.sentence, translation=ex.translation)
+                ExampleSentence(
+                    sentence=ex.get('sentence', ''),
+                    translation=ex.get('translation', '')
+                )
                 for ex in fc.examples
             ],
             synonyms=fc.synonyms,
@@ -650,7 +678,7 @@ def update_draft(
     db: str = "default", owner: User = None,
 ) -> Optional[schemas.DraftCardResponse]:
     try:
-        draft = DraftCard.objects.get(id=ObjectId(draft_id), owner=owner).using(db)
+        draft = DraftCard.objects.using(db).get(id=ObjectId(draft_id), owner=owner)
         for field in [
             "front", "back", "part_of_speech", "gender", "plural_form",
             "pronunciation", "notes",
@@ -679,7 +707,7 @@ def approve_draft(
     db: str = "default", owner: User = None,
 ) -> Optional[schemas.Card]:
     try:
-        draft = DraftCard.objects.get(id=ObjectId(draft_id), owner=owner).using(db)
+        draft = DraftCard.objects.using(db).get(id=ObjectId(draft_id), owner=owner)
 
         card = Card(
             front=draft.front,
@@ -700,7 +728,7 @@ def approve_draft(
         card.save(using=db)
 
         if deck_id:
-            deck = Deck.objects.get(id=ObjectId(deck_id), owner=owner).using(db)
+            deck = Deck.objects.using(db).get(id=ObjectId(deck_id), owner=owner)
             deck.cards.append(card)
             deck.save(using=db)
 
@@ -732,7 +760,7 @@ def reject_draft(
     draft_id: str, db: str = "default", owner: User = None
 ) -> bool:
     try:
-        draft = DraftCard.objects.get(id=ObjectId(draft_id), owner=owner).using(db)
+        draft = DraftCard.objects.using(db).get(id=ObjectId(draft_id), owner=owner)
         draft.status = "rejected"
         draft.save(using=db)
         return True

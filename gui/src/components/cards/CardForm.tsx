@@ -13,6 +13,11 @@ import ToggleButton from '@mui/material/ToggleButton';
 import Divider from '@mui/material/Divider';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import type { CardCreate, HardnessLevel, ExampleSentence } from '../../types';
 
 interface CardFormProps {
@@ -21,6 +26,8 @@ interface CardFormProps {
   isLoading: boolean;
   submitLabel: string;
 }
+
+const SECTION_SPACING = 3;
 
 export default function CardForm({ initialValues, onSubmit, isLoading, submitLabel }: CardFormProps) {
   const [front, setFront] = useState(initialValues?.front ?? '');
@@ -64,93 +71,257 @@ export default function CardForm({ initialValues, onSubmit, isLoading, submitLab
   };
 
   return (
-    <Paper sx={{ p: 3 }}>
-      <Box component="form" onSubmit={handleSubmit}>
-        <Grid container spacing={3}>
-          <Grid size={{ xs: 12 }}>
-            <Typography variant="h6">Core</Typography>
-          </Grid>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField fullWidth required label="Front (word/phrase)" value={front} onChange={(e) => setFront(e.target.value)} multiline />
-          </Grid>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField fullWidth required label="Back (translation)" value={back} onChange={(e) => setBack(e.target.value)} multiline />
-          </Grid>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField fullWidth label="Part of Speech" value={partOfSpeech} onChange={(e) => setPartOfSpeech(e.target.value)} placeholder="noun, verb, adjective..." />
-          </Grid>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Box>
-              <Typography variant="body2" sx={{ mb: 1 }}>Difficulty</Typography>
-              <ToggleButtonGroup value={hardness} exclusive onChange={(_, v) => v && setHardness(v)} size="small">
-                <ToggleButton value="easy" color="success">Easy</ToggleButton>
-                <ToggleButton value="medium" color="warning">Medium</ToggleButton>
-                <ToggleButton value="hard" color="error">Hard</ToggleButton>
-              </ToggleButtonGroup>
-            </Box>
-          </Grid>
-
-          <Grid size={{ xs: 12 }}><Divider /><Typography variant="h6" sx={{ mt: 1 }}>Linguistics</Typography></Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <TextField fullWidth label="Gender" value={gender} onChange={(e) => setGender(e.target.value)} placeholder="masculine, feminine, neuter" />
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <TextField fullWidth label="Plural Form" value={pluralForm} onChange={(e) => setPluralForm(e.target.value)} />
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <TextField fullWidth label="Pronunciation" value={pronunciation} onChange={(e) => setPronunciation(e.target.value)} placeholder="IPA or phonetic" />
-          </Grid>
-
-          <Grid size={{ xs: 12 }}><Divider /><Typography variant="h6" sx={{ mt: 1 }}>Examples</Typography></Grid>
-          {examples.map((ex, i) => (
-            <Grid size={{ xs: 12 }} key={i}>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                <TextField sx={{ flex: 1 }} label={`Sentence ${i + 1}`} value={ex.sentence} onChange={(e) => handleExampleChange(i, 'sentence', e.target.value)} />
-                <TextField sx={{ flex: 1 }} label={`Translation ${i + 1}`} value={ex.translation} onChange={(e) => handleExampleChange(i, 'translation', e.target.value)} />
-                <IconButton onClick={() => setExamples(examples.filter((_, idx) => idx !== i))} disabled={examples.length <= 1}>
-                  <DeleteIcon />
-                </IconButton>
-              </Box>
+    <Box component="form" onSubmit={handleSubmit}>
+      <Stack spacing={SECTION_SPACING}>
+        {/* Core Information */}
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="h6" gutterBottom color="primary">Core Information</Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  required
+                  label="Front (Word/Phrase)"
+                  value={front}
+                  onChange={(e) => setFront(e.target.value)}
+                  placeholder="e.g., 'Bonjour'"
+                  helperText="The main term you want to learn."
+                  variant="outlined"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  required
+                  label="Back (Translation/Definition)"
+                  value={back}
+                  onChange={(e) => setBack(e.target.value)}
+                  multiline
+                  minRows={2}
+                  placeholder="e.g., 'Hello'"
+                  variant="outlined"
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Autocomplete
+                  freeSolo
+                  options={["noun", "verb", "adjective", "adverb", "preposition", "conjunction", "interjection"]}
+                  value={partOfSpeech}
+                  onChange={(_, v) => setPartOfSpeech(v || "")}
+                  renderInput={(params) => <TextField {...params} label="Part of Speech" placeholder="e.g., noun" />}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Box display="flex" alignItems="center" gap={2}>
+                  <Typography variant="body2" color="text.secondary">Difficulty:</Typography>
+                  <ToggleButtonGroup
+                    value={hardness}
+                    exclusive
+                    onChange={(_, v) => v && setHardness(v)}
+                    size="small"
+                    aria-label="hardness level"
+                  >
+                    <ToggleButton value="easy" color="success">Easy</ToggleButton>
+                    <ToggleButton value="medium" color="warning">Medium</ToggleButton>
+                    <ToggleButton value="hard" color="error">Hard</ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
+              </Grid>
             </Grid>
-          ))}
-          <Grid size={{ xs: 12 }}>
-            <Button startIcon={<AddIcon />} onClick={() => setExamples([...examples, { sentence: '', translation: '' }])} disabled={examples.length >= 5}>
-              Add Example
-            </Button>
-          </Grid>
+          </CardContent>
+        </Card>
 
-          <Grid size={{ xs: 12 }}><Divider /><Typography variant="h6" sx={{ mt: 1 }}>Related Words</Typography></Grid>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Autocomplete multiple freeSolo options={[]} value={synonyms} onChange={(_, v) => setSynonyms(v)}
-              renderTags={(value, getTagProps) => value.map((option, index) => <Chip variant="outlined" label={option} size="small" {...getTagProps({ index })} key={index} />)}
-              renderInput={(params) => <TextField {...params} label="Synonyms" placeholder="Type and press Enter" />}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Autocomplete multiple freeSolo options={[]} value={antonyms} onChange={(_, v) => setAntonyms(v)}
-              renderTags={(value, getTagProps) => value.map((option, index) => <Chip variant="outlined" label={option} size="small" {...getTagProps({ index })} key={index} />)}
-              renderInput={(params) => <TextField {...params} label="Antonyms" placeholder="Type and press Enter" />}
-            />
-          </Grid>
+        {/* Linguistic Details */}
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="h6" gutterBottom color="primary">Linguistic Details</Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={4}>
+                <Autocomplete
+                  freeSolo
+                  options={["masculine", "feminine", "neuter"]}
+                  value={gender}
+                  onChange={(_, v) => setGender(v || "")}
+                  renderInput={(params) => <TextField {...params} label="Gender" placeholder="e.g., masculine" />}
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="Plural Form"
+                  value={pluralForm}
+                  onChange={(e) => setPluralForm(e.target.value)}
+                  placeholder="e.g., chats"
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="Pronunciation"
+                  value={pronunciation}
+                  onChange={(e) => setPronunciation(e.target.value)}
+                  placeholder="IPA (e.g., /bɔ̃.ʒuʁ/)"
+                  InputProps={{
+                    endAdornment: (
+                      <Tooltip title="International Phonetic Alphabet representation">
+                        <HelpOutlineIcon fontSize="small" color="action" />
+                      </Tooltip>
+                    )
+                  }}
+                />
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
 
-          <Grid size={{ xs: 12 }}><Divider /><Typography variant="h6" sx={{ mt: 1 }}>Meta</Typography></Grid>
-          <Grid size={{ xs: 12 }}>
-            <Autocomplete multiple freeSolo options={[]} value={tags} onChange={(_, v) => setTags(v)}
-              renderTags={(value, getTagProps) => value.map((option, index) => <Chip variant="outlined" label={option} size="small" {...getTagProps({ index })} key={index} />)}
-              renderInput={(params) => <TextField {...params} label="Tags" placeholder="Type and press Enter" />}
-            />
-          </Grid>
-          <Grid size={{ xs: 12 }}>
-            <TextField fullWidth label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} multiline rows={3} />
-          </Grid>
+        {/* Examples */}
+        <Card variant="outlined">
+          <CardContent>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+              <Typography variant="h6" color="primary">Examples</Typography>
+              <Button
+                startIcon={<AddIcon />}
+                onClick={() => setExamples([...examples, { sentence: '', translation: '' }])}
+                disabled={examples.length >= 5}
+                size="small"
+              >
+                Add Example
+              </Button>
+            </Box>
+            <Stack spacing={2}>
+              {examples.map((ex, i) => (
+                <Paper key={i} elevation={0} variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
+                  <Box display="flex" alignItems="flex-start" gap={2}>
+                    <Grid container spacing={2} flex={1}>
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          label={`Sentence ${i + 1}`}
+                          value={ex.sentence}
+                          onChange={(e) => handleExampleChange(i, 'sentence', e.target.value)}
+                          size="small"
+                          placeholder="Example sentence using the word"
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          label={`Translation ${i + 1}`}
+                          value={ex.translation}
+                          onChange={(e) => handleExampleChange(i, 'translation', e.target.value)}
+                          size="small"
+                          placeholder="Translation of the example"
+                        />
+                      </Grid>
+                    </Grid>
+                    <IconButton
+                      onClick={() => setExamples(examples.filter((_, idx) => idx !== i))}
+                      disabled={examples.length <= 1}
+                      color="error"
+                      size="small"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
+                </Paper>
+              ))}
+            </Stack>
+          </CardContent>
+        </Card>
 
-          <Grid size={{ xs: 12 }}>
-            <Button type="submit" variant="contained" size="large" disabled={isLoading || !front.trim() || !back.trim()}>
-              {isLoading ? 'Saving...' : submitLabel}
-            </Button>
-          </Grid>
-        </Grid>
-      </Box>
-    </Paper>
+        {/* Relationships */}
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="h6" gutterBottom color="primary">Relationships</Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Autocomplete
+                  multiple
+                  freeSolo
+                  options={[]}
+                  value={synonyms}
+                  onChange={(_, v) => setSynonyms(v)}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip variant="outlined" label={option} size="small" {...getTagProps({ index })} key={index} />
+                    ))
+                  }
+                  renderInput={(params) => (
+                    <TextField {...params} label="Synonyms" placeholder="Type and press Enter" helperText="Words with similar meanings" />
+                  )}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Autocomplete
+                  multiple
+                  freeSolo
+                  options={[]}
+                  value={antonyms}
+                  onChange={(_, v) => setAntonyms(v)}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip variant="outlined" label={option} size="small" {...getTagProps({ index })} key={index} />
+                    ))
+                  }
+                  renderInput={(params) => (
+                    <TextField {...params} label="Antonyms" placeholder="Type and press Enter" helperText="Words with opposite meanings" />
+                  )}
+                />
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+
+        {/* Metadata */}
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="h6" gutterBottom color="primary">Additional Notes & Tags</Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Autocomplete
+                  multiple
+                  freeSolo
+                  options={[]}
+                  value={tags}
+                  onChange={(_, v) => setTags(v)}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip variant="outlined" label={option} size="small" {...getTagProps({ index })} key={index} />
+                    ))
+                  }
+                  renderInput={(params) => (
+                    <TextField {...params} label="Tags" placeholder="Type and press Enter" />
+                  )}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  multiline
+                  minRows={3}
+                  placeholder="Any extra context, usage notes, or mnemonic devices..."
+                />
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+
+        <Box display="flex" justifyContent="flex-end" pt={2} pb={4}>
+          <Button
+            type="submit"
+            variant="contained"
+            size="large"
+            disabled={isLoading || !front.trim() || !back.trim()}
+            sx={{ px: 4, py: 1.5 }}
+          >
+            {isLoading ? 'Saving...' : submitLabel}
+          </Button>
+        </Box>
+      </Stack>
+    </Box>
   );
 }

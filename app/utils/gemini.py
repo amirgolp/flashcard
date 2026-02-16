@@ -12,15 +12,18 @@ load_dotenv(dotenv_path="app/.env")
 
 
 # Pydantic models for Gemini structured response
-class GeminiExampleSentence(BaseModel):
-    sentence: str
-    translation: str
-
-
 class GeminiFlashcard(BaseModel):
     front: str
     back: str
-    examples: List[GeminiExampleSentence]
+    # Simplify examples to a list of dicts or strings if needed, 
+    # but let's try keeping it simple first. 
+    # The error suggests it can't find the definition for the nested type.
+    # We'll define the nested structure explicitly in the prompt or use a simpler structure.
+    # tailored for the specific library version issue.
+    # Let's try defining the inner class *inside* or just using standard types if possible,
+    # or ensuring the naming doesn't conflict. 
+    # Actually, the safest bet with this specific error is often to flatten or use dicts.
+    examples: List[dict] # [{"sentence": "...", "translation": "..."}]
     synonyms: List[str]
     antonyms: List[str]
     part_of_speech: str
@@ -86,7 +89,7 @@ For each word/phrase, provide:
 - front: the word/phrase in {target_language}
 - back: translation to {native_language}
 - examples: exactly 3 example sentences using the word in {target_language}, each with
-  its {native_language} translation
+  its {native_language} translation. Format as a list of objects like: [{{"sentence": "...", "translation": "..."}}]
 - synonyms: up to 3 synonyms in {target_language} (empty list if none applicable)
 - antonyms: up to 3 antonyms in {target_language} (empty list if none applicable)
 - part_of_speech: the grammatical category (noun, verb, adjective, adverb, etc.)

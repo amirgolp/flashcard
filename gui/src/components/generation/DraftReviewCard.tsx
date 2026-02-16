@@ -8,6 +8,8 @@ import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Divider from '@mui/material/Divider';
+import Button from '@mui/material/Button';
+import Stack from '@mui/material/Stack';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import EditIcon from '@mui/icons-material/Edit';
@@ -22,10 +24,10 @@ interface DraftReviewCardProps {
   onEdit: () => void;
 }
 
-const statusConfig: Record<DraftCardStatus, { label: string; color: 'default' | 'success' | 'error' }> = {
-  pending: { label: 'Pending', color: 'default' },
-  approved: { label: 'Approved', color: 'success' },
-  rejected: { label: 'Rejected', color: 'error' },
+const statusConfig: Record<DraftCardStatus, { label: string; color: 'default' | 'success' | 'error'; borderColor: string }> = {
+  pending: { label: 'Pending', color: 'default', borderColor: '#2196f3' }, // Blue for pending
+  approved: { label: 'Approved', color: 'success', borderColor: '#4caf50' }, // Green for approved
+  rejected: { label: 'Rejected', color: 'error', borderColor: '#f44336' },   // Red for rejected
 };
 
 export default function DraftReviewCard({
@@ -37,146 +39,178 @@ export default function DraftReviewCard({
   onEdit,
 }: DraftReviewCardProps) {
   const isPending = draft.status === 'pending';
-  const { label, color } = statusConfig[draft.status];
+  const { label, color, borderColor } = statusConfig[draft.status];
 
   return (
     <Card
-      variant="outlined"
+      elevation={selected ? 4 : 1}
       sx={{
-        opacity: draft.status === 'rejected' ? 0.6 : 1,
-        borderColor: selected ? 'primary.main' : undefined,
-        borderWidth: selected ? 2 : 1,
-        transition: 'border-color 0.2s, opacity 0.2s',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        transition: 'all 0.2s ease-in-out',
+        borderTop: `4px solid ${borderColor}`,
+        opacity: draft.status === 'rejected' ? 0.7 : 1,
+        transform: selected ? 'scale(1.02)' : 'none',
+        '&:hover': {
+          elevation: 8,
+          transform: 'translateY(-2px)',
+          boxShadow: (theme) => theme.shadows[4],
+        },
       }}
     >
-      <CardContent sx={{ pb: 1 }}>
-        {/* Header row: checkbox, status chip */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <CardContent sx={{ flexGrow: 1, pb: 1 }}>
+        {/* Header: Checkbox, Pages, Status */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <Checkbox
               checked={selected}
               onChange={onToggle}
               disabled={!isPending}
               size="small"
-              sx={{ p: 0 }}
+              sx={{ p: 0.5, ml: -1 }}
             />
-            <Chip label={label} color={color} size="small" variant="outlined" />
-            {draft.part_of_speech && (
-              <Chip label={draft.part_of_speech} size="small" variant="filled" color="info" />
+            {draft.source_page_start != null && (
+              <Typography variant="caption" color="text.secondary" sx={{ bgcolor: 'action.hover', px: 0.5, borderRadius: 1 }}>
+                p. {draft.source_page_start}
+                {draft.source_page_end != null && draft.source_page_end !== draft.source_page_start
+                  ? `-${draft.source_page_end}`
+                  : ''}
+              </Typography>
             )}
           </Box>
-          {draft.source_page_start != null && (
-            <Typography variant="caption" color="text.secondary">
-              p. {draft.source_page_start}
-              {draft.source_page_end != null && draft.source_page_end !== draft.source_page_start
-                ? `\u2013${draft.source_page_end}`
-                : ''}
-            </Typography>
-          )}
+          <Chip
+            label={label}
+            color={color}
+            size="small"
+            variant={draft.status === 'pending' ? 'outlined' : 'filled'}
+            sx={{ height: 20, fontSize: '0.7rem' }}
+          />
         </Box>
 
-        {/* Front / Back */}
-        <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-          {draft.front}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" gutterBottom>
-          {draft.back}
-        </Typography>
-
-        {/* Examples */}
-        {draft.examples && draft.examples.length > 0 && (
-          <Box sx={{ mt: 1 }}>
-            {draft.examples.map((ex, i) => (
-              <Box key={i} sx={{ mb: 0.5 }}>
-                <Typography variant="caption" sx={{ fontStyle: 'italic', display: 'block' }}>
-                  {ex.sentence}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                  {ex.translation}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-        )}
-
-        {/* Linguistic info row */}
-        {(draft.gender || draft.plural_form || draft.pronunciation) && (
-          <Box sx={{ display: 'flex', gap: 2, mt: 1, flexWrap: 'wrap' }}>
-            {draft.gender && (
-              <Typography variant="caption" color="text.secondary">
-                Gender: {draft.gender}
-              </Typography>
-            )}
-            {draft.plural_form && (
-              <Typography variant="caption" color="text.secondary">
-                Plural: {draft.plural_form}
-              </Typography>
-            )}
+        {/* Main Content: Word & Translation */}
+        <Box sx={{ mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 1 }}>
+            <Typography variant="h5" fontWeight={700} color="text.primary" sx={{ lineHeight: 1.2 }}>
+              {draft.front}
+            </Typography>
             {draft.pronunciation && (
-              <Typography variant="caption" color="text.secondary">
-                [{draft.pronunciation}]
+              <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace', opacity: 0.8 }}>
+                /{draft.pronunciation}/
               </Typography>
             )}
           </Box>
-        )}
 
-        {/* Synonyms / Antonyms */}
-        {((draft.synonyms && draft.synonyms.length > 0) || (draft.antonyms && draft.antonyms.length > 0)) && (
-          <Box sx={{ display: 'flex', gap: 2, mt: 1, flexWrap: 'wrap' }}>
-            {draft.synonyms && draft.synonyms.length > 0 && (
-              <Typography variant="caption" color="text.secondary">
-                Syn: {draft.synonyms.join(', ')}
-              </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+            {draft.part_of_speech && (
+              <Chip
+                label={draft.part_of_speech}
+                size="small"
+                sx={{
+                  height: 20,
+                  fontSize: '0.7rem',
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
+                  fontWeight: 600
+                }}
+              />
             )}
-            {draft.antonyms && draft.antonyms.length > 0 && (
-              <Typography variant="caption" color="text.secondary">
-                Ant: {draft.antonyms.join(', ')}
-              </Typography>
-            )}
+            <Typography variant="body1" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+              {draft.back}
+            </Typography>
+          </Box>
+        </Box>
+
+        <Divider sx={{ my: 1.5, opacity: 0.6 }} />
+
+        {/* Examples Section */}
+        {draft.examples && draft.examples.length > 0 && (
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="caption" fontWeight={600} color="text.secondary" sx={{ display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Examples
+            </Typography>
+            <Stack spacing={1}>
+              {draft.examples.slice(0, 2).map((ex, i) => ( // Show distinct first 2 examples
+                <Box key={i} sx={{
+                  p: 1,
+                  bgcolor: 'action.hover',
+                  borderRadius: 1,
+                  borderLeft: '2px solid',
+                  borderColor: 'primary.light'
+                }}>
+                  <Typography variant="body2" color="text.primary" sx={{ fontWeight: 500, lineHeight: 1.3 }}>
+                    {ex.sentence}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.3 }}>
+                    {ex.translation}
+                  </Typography>
+                </Box>
+              ))}
+            </Stack>
           </Box>
         )}
 
-        {/* Tags */}
-        {draft.tags && draft.tags.length > 0 && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
-            {draft.tags.map((tag) => (
-              <Chip key={tag} label={tag} size="small" variant="outlined" />
-            ))}
-          </Box>
-        )}
-
-        {/* Notes */}
-        {draft.notes && (
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', fontStyle: 'italic' }}>
-            {draft.notes}
-          </Typography>
-        )}
+        {/* Metadata Grid (Gender, Plural, Synonyms) */}
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mt: 'auto' }}>
+          {draft.gender && (
+            <Box>
+              <Typography variant="caption" color="text.secondary" display="block">Gender</Typography>
+              <Typography variant="body2">{draft.gender}</Typography>
+            </Box>
+          )}
+          {draft.plural_form && (
+            <Box>
+              <Typography variant="caption" color="text.secondary" display="block">Plural</Typography>
+              <Typography variant="body2">{draft.plural_form}</Typography>
+            </Box>
+          )}
+          {draft.synonyms && draft.synonyms.length > 0 && (
+            <Box sx={{ gridColumn: '1 / -1' }}>
+              <Typography variant="caption" color="text.secondary" display="block">Synonyms</Typography>
+              <Typography variant="caption" sx={{ fontStyle: 'italic' }}>
+                {draft.synonyms.join(', ')}
+              </Typography>
+            </Box>
+          )}
+        </Box>
       </CardContent>
 
-      <Divider />
-
-      <CardActions sx={{ justifyContent: 'flex-end', px: 2, py: 0.5 }}>
-        <Tooltip title="Edit">
-          <span>
-            <IconButton size="small" onClick={onEdit} disabled={!isPending}>
-              <EditIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </Tooltip>
-        <Tooltip title="Approve">
-          <span>
-            <IconButton size="small" color="success" onClick={() => onApprove()} disabled={!isPending}>
-              <CheckCircleIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </Tooltip>
-        <Tooltip title="Reject">
-          <span>
-            <IconButton size="small" color="error" onClick={onReject} disabled={!isPending}>
-              <CancelIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </Tooltip>
+      {/* Actions Footer */}
+      <CardActions sx={{ p: 1.5, bgcolor: 'background.default', borderTop: '1px solid', borderColor: 'divider', justifyContent: 'space-between' }}>
+        <Button
+          size="small"
+          startIcon={<EditIcon />}
+          onClick={onEdit}
+          disabled={!isPending}
+          sx={{ textTransform: 'none', color: 'text.secondary' }}
+        >
+          Edit
+        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            size="small"
+            variant="outlined"
+            color="error"
+            startIcon={<CancelIcon />}
+            onClick={onReject}
+            disabled={!isPending}
+            sx={{ px: 2, minWidth: 'auto' }}
+          >
+            Reject
+          </Button>
+          <Button
+            size="small"
+            variant="contained"
+            color="success"
+            startIcon={<CheckCircleIcon />}
+            onClick={() => onApprove()}
+            disabled={!isPending}
+            sx={{ px: 2, minWidth: 'auto', boxShadow: 'none' }}
+          >
+            Approve
+          </Button>
+        </Stack>
       </CardActions>
     </Card>
   );

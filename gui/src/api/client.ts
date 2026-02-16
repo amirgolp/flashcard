@@ -19,6 +19,12 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('access_token');
       window.location.href = '/login';
     }
+
+    // Extract backend error message if available
+    if (error.response?.data?.detail) {
+      error.message = error.response.data.detail;
+    }
+
     return Promise.reject(error);
   }
 );

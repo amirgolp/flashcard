@@ -80,7 +80,7 @@ def initiate_google_drive_auth(
     """
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Google Drive integration not configured on server"
         )
     

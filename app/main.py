@@ -60,3 +60,12 @@ async def validation_exception_handler(request, exc: RequestValidationError):
         status_code=400,
         content={"detail": exc.errors()},
     )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc: Exception):
+    logger.error(f"Global error: {str(exc)}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error"},
+    )
