@@ -1,68 +1,72 @@
-import { useState, useRef } from 'react';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import Button from '@mui/material/Button';
-import TextField from '@mui/material/TextField';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import Alert from '@mui/material/Alert';
-import CircularProgress from '@mui/material/CircularProgress';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { useUploadBook } from '../../hooks/useBooks';
-import { useStorageConfig } from '../../hooks/useStorage';
+import { useState, useRef } from 'react'
+import Dialog from '@mui/material/Dialog'
+import DialogTitle from '@mui/material/DialogTitle'
+import DialogContent from '@mui/material/DialogContent'
+import DialogActions from '@mui/material/DialogActions'
+import Button from '@mui/material/Button'
+import TextField from '@mui/material/TextField'
+import Box from '@mui/material/Box'
+import Typography from '@mui/material/Typography'
+import Alert from '@mui/material/Alert'
+import CircularProgress from '@mui/material/CircularProgress'
+import CloudUploadIcon from '@mui/icons-material/CloudUpload'
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
+import { useUploadBook } from '../../hooks/useBooks'
+import { useStorageConfig } from '../../hooks/useStorage'
 
 interface BookUploadDialogProps {
-  open: boolean;
-  onClose: () => void;
-  onSuccess: (bookId: string) => void;
+  open: boolean
+  onClose: () => void
+  onSuccess: (bookId: string) => void
 }
 
-export default function BookUploadDialog({ open, onClose, onSuccess }: BookUploadDialogProps) {
-  const [title, setTitle] = useState('');
-  const [targetLanguage, setTargetLanguage] = useState('');
-  const [nativeLanguage, setNativeLanguage] = useState('');
-  const [file, setFile] = useState<File | null>(null);
-  const [error, setError] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const upload = useUploadBook();
-  const { data: storageConfig, isLoading: storageLoading } = useStorageConfig();
+export default function BookUploadDialog({
+  open,
+  onClose,
+  onSuccess,
+}: BookUploadDialogProps) {
+  const [title, setTitle] = useState('')
+  const [targetLanguage, setTargetLanguage] = useState('')
+  const [nativeLanguage, setNativeLanguage] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const [error, setError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const upload = useUploadBook()
+  const { data: storageConfig, isLoading: storageLoading } = useStorageConfig()
 
-  const storageConfigured = storageConfig?.is_configured ?? false;
+  const storageConfigured = storageConfig?.is_configured ?? false
 
   const reset = () => {
-    setTitle('');
-    setTargetLanguage('');
-    setNativeLanguage('');
-    setFile(null);
-    setError('');
-  };
+    setTitle('')
+    setTargetLanguage('')
+    setNativeLanguage('')
+    setFile(null)
+    setError('')
+  }
 
   const handleClose = () => {
     if (!upload.isPending) {
-      reset();
-      onClose();
+      reset()
+      onClose()
     }
-  };
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0];
+    const selected = e.target.files?.[0]
     if (selected) {
       if (selected.type !== 'application/pdf') {
-        setError('Only PDF files are supported');
-        return;
+        setError('Only PDF files are supported')
+        return
       }
-      setFile(selected);
-      if (!title) setTitle(selected.name.replace(/\.pdf$/i, ''));
-      setError('');
+      setFile(selected)
+      if (!title) setTitle(selected.name.replace(/\.pdf$/i, ''))
+      setError('')
     }
-  };
+  }
 
   const handleSubmit = () => {
-    if (!file || !title.trim()) return;
-    setError('');
+    if (!file || !title.trim()) return
+    setError('')
     upload.mutate(
       {
         file,
@@ -72,13 +76,14 @@ export default function BookUploadDialog({ open, onClose, onSuccess }: BookUploa
       },
       {
         onSuccess: (book) => {
-          reset();
-          onSuccess(book.id);
+          reset()
+          onSuccess(book.id)
         },
-        onError: (err) => setError(err instanceof Error ? err.message : 'Upload failed'),
+        onError: (err) =>
+          setError(err instanceof Error ? err.message : 'Upload failed'),
       },
-    );
-  };
+    )
+  }
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
@@ -92,13 +97,20 @@ export default function BookUploadDialog({ open, onClose, onSuccess }: BookUploa
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             {!storageConfigured && (
               <Alert severity="info" icon={<InfoOutlinedIcon />}>
-                Your file will be stored in the app's central storage.
-                You can connect your own Google Drive or Telegram in Settings for personal storage.
+                Your file will be stored in the app's central storage. You can
+                connect your own Google Drive or Telegram in Settings for
+                personal storage.
               </Alert>
             )}
             {error && <Alert severity="error">{error}</Alert>}
 
-            <input type="file" accept=".pdf" hidden ref={fileInputRef} onChange={handleFileChange} />
+            <input
+              type="file"
+              accept=".pdf"
+              hidden
+              ref={fileInputRef}
+              onChange={handleFileChange}
+            />
             <Button
               variant="outlined"
               startIcon={<CloudUploadIcon />}
@@ -139,15 +151,19 @@ export default function BookUploadDialog({ open, onClose, onSuccess }: BookUploa
         )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose} disabled={upload.isPending}>Cancel</Button>
+        <Button onClick={handleClose} disabled={upload.isPending}>
+          Cancel
+        </Button>
         <Button
           variant="contained"
           onClick={handleSubmit}
-          disabled={storageLoading || !file || !title.trim() || upload.isPending}
+          disabled={
+            storageLoading || !file || !title.trim() || upload.isPending
+          }
         >
           {upload.isPending ? 'Uploading...' : 'Upload'}
         </Button>
       </DialogActions>
     </Dialog>
-  );
+  )
 }

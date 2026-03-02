@@ -1,18 +1,18 @@
-import { useState, useMemo, useCallback } from 'react';
-import Box from '@mui/material/Box';
-import Tabs from '@mui/material/Tabs';
-import Tab from '@mui/material/Tab';
-import Button from '@mui/material/Button';
-import Toolbar from '@mui/material/Toolbar';
-import Typography from '@mui/material/Typography';
-import Grid from '@mui/material/Grid2';
-import Autocomplete from '@mui/material/Autocomplete';
-import TextField from '@mui/material/TextField';
-import Alert from '@mui/material/Alert';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import DeleteIcon from '@mui/icons-material/Delete';
-import SelectAllIcon from '@mui/icons-material/SelectAll';
-import FilterListIcon from '@mui/icons-material/FilterList';
+import { useState, useMemo, useCallback } from 'react'
+import Box from '@mui/material/Box'
+import Tabs from '@mui/material/Tabs'
+import Tab from '@mui/material/Tab'
+import Button from '@mui/material/Button'
+import Toolbar from '@mui/material/Toolbar'
+import Typography from '@mui/material/Typography'
+import Grid from '@mui/material/Grid2'
+import Autocomplete from '@mui/material/Autocomplete'
+import TextField from '@mui/material/TextField'
+import Alert from '@mui/material/Alert'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import DeleteIcon from '@mui/icons-material/Delete'
+import SelectAllIcon from '@mui/icons-material/SelectAll'
+import FilterListIcon from '@mui/icons-material/FilterList'
 import {
   useDrafts,
   useUpdateDraft,
@@ -20,16 +20,21 @@ import {
   useRejectDraft,
   useBulkApproveDrafts,
   useDeleteRejectedDrafts,
-} from '../../hooks/useGeneration';
-import { useDecks } from '../../hooks/useDecks';
-import DraftReviewCard from './DraftReviewCard';
-import DraftEditDialog from './DraftEditDialog';
-import LoadingSpinner from '../common/LoadingSpinner';
-import EmptyState from '../common/EmptyState';
-import type { DraftCardResponse, DraftCardUpdate, DraftCardStatus, Deck } from '../../types';
+} from '../../hooks/useGeneration'
+import { useDecks } from '../../hooks/useDecks'
+import DraftReviewCard from './DraftReviewCard'
+import DraftEditDialog from './DraftEditDialog'
+import LoadingSpinner from '../common/LoadingSpinner'
+import EmptyState from '../common/EmptyState'
+import type {
+  DraftCardResponse,
+  DraftCardUpdate,
+  DraftCardStatus,
+  Deck,
+} from '../../types'
 
 interface DraftReviewListProps {
-  bookId?: string;
+  bookId?: string
 }
 
 const STATUS_TABS: { label: string; value: DraftCardStatus | 'all' }[] = [
@@ -37,13 +42,17 @@ const STATUS_TABS: { label: string; value: DraftCardStatus | 'all' }[] = [
   { label: 'Pending', value: 'pending' },
   { label: 'Approved', value: 'approved' },
   { label: 'Rejected', value: 'rejected' },
-];
+]
 
 export default function DraftReviewList({ bookId }: DraftReviewListProps) {
-  const [statusFilter, setStatusFilter] = useState<DraftCardStatus | 'all'>('all');
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [editingDraft, setEditingDraft] = useState<DraftCardResponse | null>(null);
-  const [bulkDeckId, setBulkDeckId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<DraftCardStatus | 'all'>(
+    'all',
+  )
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [editingDraft, setEditingDraft] = useState<DraftCardResponse | null>(
+    null,
+  )
+  const [bulkDeckId, setBulkDeckId] = useState<string | null>(null)
 
   // Queries
   const queryParams = useMemo(
@@ -53,99 +62,104 @@ export default function DraftReviewList({ bookId }: DraftReviewListProps) {
       limit: 100,
     }),
     [bookId, statusFilter],
-  );
-  const { data: drafts, isLoading, error } = useDrafts(queryParams);
-  const { data: decks } = useDecks(0, 100);
+  )
+  const { data: drafts, isLoading, error } = useDrafts(queryParams)
+  const { data: decks } = useDecks(0, 100)
 
   // Mutations
-  const updateDraft = useUpdateDraft();
-  const approveDraft = useApproveDraft();
-  const rejectDraft = useRejectDraft();
-  const bulkApprove = useBulkApproveDrafts();
-  const deleteRejected = useDeleteRejectedDrafts();
+  const updateDraft = useUpdateDraft()
+  const approveDraft = useApproveDraft()
+  const rejectDraft = useRejectDraft()
+  const bulkApprove = useBulkApproveDrafts()
+  const deleteRejected = useDeleteRejectedDrafts()
 
   // Derived
   const pendingDrafts = useMemo(
-    () => (drafts ?? []).filter((d: DraftCardResponse) => d.status === 'pending'),
+    () =>
+      (drafts ?? []).filter((d: DraftCardResponse) => d.status === 'pending'),
     [drafts],
-  );
+  )
   const hasRejected = useMemo(
-    () => (drafts ?? []).some((d: DraftCardResponse) => d.status === 'rejected'),
+    () =>
+      (drafts ?? []).some((d: DraftCardResponse) => d.status === 'rejected'),
     [drafts],
-  );
+  )
 
   // Handlers
   const handleToggle = useCallback((id: string) => {
     setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
 
   const handleSelectAll = () => {
-    const allPendingIds = pendingDrafts.map((d: DraftCardResponse) => d.id);
-    setSelectedIds(new Set(allPendingIds));
-  };
+    const allPendingIds = pendingDrafts.map((d: DraftCardResponse) => d.id)
+    setSelectedIds(new Set(allPendingIds))
+  }
 
   const handleDeselectAll = () => {
-    setSelectedIds(new Set());
-  };
+    setSelectedIds(new Set())
+  }
 
   const handleApprove = (id: string, deckId?: string) => {
-    approveDraft.mutate({ id, deckId });
+    approveDraft.mutate({ id, deckId })
     setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  };
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+  }
 
   const handleReject = (id: string) => {
-    rejectDraft.mutate(id);
+    rejectDraft.mutate(id)
     setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  };
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+  }
 
   const handleEdit = (draft: DraftCardResponse) => {
-    setEditingDraft(draft);
-  };
+    setEditingDraft(draft)
+  }
 
   const handleEditSave = (data: DraftCardUpdate) => {
-    if (!editingDraft) return;
+    if (!editingDraft) return
     updateDraft.mutate(
       { id: editingDraft.id, data },
       { onSuccess: () => setEditingDraft(null) },
-    );
-  };
+    )
+  }
 
   const handleBulkApprove = () => {
-    if (selectedIds.size === 0) return;
+    if (selectedIds.size === 0) return
     bulkApprove.mutate(
       {
         draft_ids: Array.from(selectedIds),
         deck_id: bulkDeckId ?? undefined,
       },
       { onSuccess: () => setSelectedIds(new Set()) },
-    );
-  };
+    )
+  }
 
   const handleDeleteRejected = () => {
-    deleteRejected.mutate(bookId);
-  };
+    deleteRejected.mutate(bookId)
+  }
 
-  const handleTabChange = (_: React.SyntheticEvent, newValue: DraftCardStatus | 'all') => {
-    setStatusFilter(newValue);
-    setSelectedIds(new Set());
-  };
+  const handleTabChange = (
+    _: React.SyntheticEvent,
+    newValue: DraftCardStatus | 'all',
+  ) => {
+    setStatusFilter(newValue)
+    setSelectedIds(new Set())
+  }
 
   // Loading state
   if (isLoading) {
-    return <LoadingSpinner message="Loading drafts..." />;
+    return <LoadingSpinner message="Loading drafts..." />
   }
 
   // Error state
@@ -154,7 +168,7 @@ export default function DraftReviewList({ bookId }: DraftReviewListProps) {
       <Alert severity="error">
         {error instanceof Error ? error.message : 'Failed to load drafts.'}
       </Alert>
-    );
+    )
   }
 
   return (
@@ -170,7 +184,11 @@ export default function DraftReviewList({ bookId }: DraftReviewListProps) {
             key={tab.value}
             label={tab.label}
             value={tab.value}
-            icon={tab.value === 'all' ? <FilterListIcon fontSize="small" /> : undefined}
+            icon={
+              tab.value === 'all' ? (
+                <FilterListIcon fontSize="small" />
+              ) : undefined
+            }
             iconPosition="start"
           />
         ))}
@@ -192,10 +210,16 @@ export default function DraftReviewList({ bookId }: DraftReviewListProps) {
           <Button
             size="small"
             startIcon={<SelectAllIcon />}
-            onClick={selectedIds.size === pendingDrafts.length ? handleDeselectAll : handleSelectAll}
+            onClick={
+              selectedIds.size === pendingDrafts.length
+                ? handleDeselectAll
+                : handleSelectAll
+            }
             variant="outlined"
           >
-            {selectedIds.size === pendingDrafts.length ? 'Deselect All' : 'Select All'}
+            {selectedIds.size === pendingDrafts.length
+              ? 'Deselect All'
+              : 'Select All'}
           </Button>
 
           {selectedIds.size > 0 && (
@@ -212,7 +236,11 @@ export default function DraftReviewList({ bookId }: DraftReviewListProps) {
                 onChange={(_, v) => setBulkDeckId(v?.id ?? null)}
                 sx={{ minWidth: 200 }}
                 renderInput={(params) => (
-                  <TextField {...params} label="Target Deck (optional)" size="small" />
+                  <TextField
+                    {...params}
+                    label="Target Deck (optional)"
+                    size="small"
+                  />
                 )}
               />
 
@@ -224,7 +252,9 @@ export default function DraftReviewList({ bookId }: DraftReviewListProps) {
                 onClick={handleBulkApprove}
                 disabled={bulkApprove.isPending}
               >
-                {bulkApprove.isPending ? 'Approving...' : `Approve ${selectedIds.size}`}
+                {bulkApprove.isPending
+                  ? 'Approving...'
+                  : `Approve ${selectedIds.size}`}
               </Button>
             </>
           )}
@@ -245,7 +275,7 @@ export default function DraftReviewList({ bookId }: DraftReviewListProps) {
       )}
 
       {/* Empty state */}
-      {(!drafts || drafts.length === 0) ? (
+      {!drafts || drafts.length === 0 ? (
         <EmptyState
           icon={<FilterListIcon />}
           title="No drafts found"
@@ -259,7 +289,10 @@ export default function DraftReviewList({ bookId }: DraftReviewListProps) {
         /* Draft cards grid */
         <Grid container spacing={3}>
           {drafts.map((draft: DraftCardResponse) => (
-            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3, xl: 2.4 }} key={draft.id}>
+            <Grid
+              size={{ xs: 12, sm: 6, md: 4, lg: 3, xl: 2.4 }}
+              key={draft.id}
+            >
               <DraftReviewCard
                 draft={draft}
                 selected={selectedIds.has(draft.id)}
@@ -282,5 +315,5 @@ export default function DraftReviewList({ bookId }: DraftReviewListProps) {
         isSaving={updateDraft.isPending}
       />
     </Box>
-  );
+  )
 }

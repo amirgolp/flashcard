@@ -7,30 +7,24 @@ A full-stack flashcard learning application built with FastAPI (Python), MongoDB
 ### 1. Backend (FastAPI + MongoDB)
 The backend is located in the `app` directory.
 
-**Prerequisites**: Python 3.9+ and MongoDB (or Docker).
+**Prerequisites**: Python 3.9+ and MongoDB Atlas (or a local MongoDB instance).
 
-1. **Database Setup with Docker (Recommended)**:
-   You can quickly start a MongoDB instance using the provided `docker-compose.yml` file in the root directory.
-   ```bash
-   docker-compose up -d
-   ```
-
-2. **Environment Variables**:
+1. **Environment Variables**:
    Copy the example environment file inside the `app` directory to set up your credentials:
    ```bash
    cp app/.env.example app/.env
    ```
-   Feel free to adjust the MongoDB connection inside `app/.env` if you're not using the default Docker setup:
+   Configure your MongoDB connection inside `app/.env`:
    - `MONGODB_DB`
    - `MONGODB_USER`
    - `MONGODB_PASSWORD`
-   - `MONGODB_HOST`
+   - `MONGODB_HOST` (Set this to your MongoDB Atlas connection string)
    
    **Other Integrations:**
    - **Google Drive Storage**: Add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` for file storage.
    - **AI Generation (Gemini)**: Add `GEMINI_API_KEY` to use the Gemini model for content generation.
 
-3. **Install dependencies**:
+2. **Install dependencies**:
    This project uses `uv` for fast package management. The dependencies are defined in `pyproject.toml` and locked/resolved in `requirements.txt`.
    
    If you have `uv` installed:
@@ -43,13 +37,6 @@ The backend is located in the `app` directory.
    ```bash
    pip install -r requirements.txt
    ```
-
-2. **Environment Variables**:
-   Ensure you have configured your MongoDB connection in `app/.env`:
-   - `MONGODB_DB`
-   - `MONGODB_USER`
-   - `MONGODB_PASSWORD`
-   - `MONGODB_HOST`
 
 3. **Run the API Server**:
    ```bash

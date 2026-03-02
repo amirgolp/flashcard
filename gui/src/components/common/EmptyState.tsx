@@ -1,14 +1,19 @@
-import type { ReactNode } from 'react';
-import { Box, Typography } from '@mui/material';
+import type { ReactNode } from 'react'
+import { Box, Typography } from '@mui/material'
 
 interface EmptyStateProps {
-  icon: ReactNode;
-  title: string;
-  description?: string;
-  action?: ReactNode;
+  icon: ReactNode
+  title: string
+  description?: string
+  action?: ReactNode
 }
 
-export default function EmptyState({ icon, title, description, action }: EmptyStateProps) {
+export default function EmptyState({
+  icon,
+  title,
+  description,
+  action,
+}: EmptyStateProps) {
   return (
     <Box
       sx={{
@@ -38,12 +43,16 @@ export default function EmptyState({ icon, title, description, action }: EmptySt
       </Typography>
 
       {description && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 360 }}>
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ mb: 3, maxWidth: 360 }}
+        >
           {description}
         </Typography>
       )}
 
       {action && <Box sx={{ mt: description ? 0 : 2 }}>{action}</Box>}
     </Box>
-  );
+  )
 }

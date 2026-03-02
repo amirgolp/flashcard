@@ -1,13 +1,13 @@
-import { Container, Box } from '@mui/material';
-import { Navigate } from '@tanstack/react-router';
-import { useAuth } from '../context/AuthContext';
-import LoginForm from '../components/auth/LoginForm';
+import { Container, Box } from '@mui/material'
+import { Navigate } from '@tanstack/react-router'
+import { useAuth } from '../context/AuthContext'
+import LoginForm from '../components/auth/LoginForm'
 
 export default function LoginPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth()
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" />;
+    return <Navigate to="/dashboard" />
   }
 
   return (
@@ -24,5 +24,5 @@ export default function LoginPage() {
         <LoginForm />
       </Box>
     </Container>
-  );
+  )
 }

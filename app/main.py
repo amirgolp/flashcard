@@ -1,10 +1,11 @@
 from fastapi import FastAPI
-from .routers import decks, cards, search, auth, books, generation, storage
+from .routers import decks, cards, search, auth, books, generation, storage, templates
 from .utils.logger import logger
 from .exceptions import http_exception_handler
 from fastapi.exceptions import RequestValidationError, HTTPException
 from fastapi.responses import JSONResponse
 from .database import connect_db, disconnect_db
+from .crud import seed_default_templates
 
 app = FastAPI(
     title="Flashcard API",
@@ -31,6 +32,7 @@ app.add_middleware(
 @app.on_event("startup")
 def startup_db_client():
     connect_db()
+    seed_default_templates()
 
 
 @app.on_event("shutdown")
@@ -45,6 +47,7 @@ app.include_router(search.router)
 app.include_router(books.router)
 app.include_router(generation.router)
 app.include_router(storage.router)
+app.include_router(templates.router)
 
 
 @app.exception_handler(HTTPException)

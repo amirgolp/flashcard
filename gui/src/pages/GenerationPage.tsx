@@ -1,35 +1,35 @@
-import { useState } from 'react';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
-import Paper from '@mui/material/Paper';
-import Stack from '@mui/material/Stack';
-import AddIcon from '@mui/icons-material/Add';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import { useNavigate } from '@tanstack/react-router';
-import GenerateDialog from '../components/generation/GenerateDialog';
-import DraftReviewList from '../components/generation/DraftReviewList';
-import BookUploadDialog from '../components/books/BookUploadDialog';
-import type { GenerationResponse } from '../types';
+import { useState } from 'react'
+import Box from '@mui/material/Box'
+import Typography from '@mui/material/Typography'
+import Button from '@mui/material/Button'
+import Paper from '@mui/material/Paper'
+import Stack from '@mui/material/Stack'
+import AddIcon from '@mui/icons-material/Add'
+import CloudUploadIcon from '@mui/icons-material/CloudUpload'
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
+import { useNavigate } from '@tanstack/react-router'
+import GenerateDialog from '../components/generation/GenerateDialog'
+import DraftReviewList from '../components/generation/DraftReviewList'
+import BookUploadDialog from '../components/books/BookUploadDialog'
+import type { GenerationResponse } from '../types'
 
 export default function GenerationPage() {
-  const navigate = useNavigate();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
-  const [lastResult, setLastResult] = useState<GenerationResponse | null>(null);
+  const navigate = useNavigate()
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [uploadOpen, setUploadOpen] = useState(false)
+  const [selectedBookId, setSelectedBookId] = useState<string | null>(null)
+  const [lastResult, setLastResult] = useState<GenerationResponse | null>(null)
 
   const handleGenerateSuccess = (result: GenerationResponse) => {
-    setLastResult(result);
-    setTimeout(() => setDialogOpen(false), 2000);
-  };
+    setLastResult(result)
+    setTimeout(() => setDialogOpen(false), 2000)
+  }
 
   const handleUploadSuccess = (bookId: string) => {
-    setUploadOpen(false);
-    setSelectedBookId(bookId);
-    setDialogOpen(true);
-  };
+    setUploadOpen(false)
+    setSelectedBookId(bookId)
+    setDialogOpen(true)
+  }
 
   return (
     <Box>
@@ -42,8 +42,9 @@ export default function GenerationPage() {
           </Typography>
         </Box>
         <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-          Generate flashcards automatically from your uploaded books using AI. Select a book,
-          configure the settings, and let AI create draft flashcards for you to review.
+          Generate flashcards automatically from your uploaded books using AI.
+          Select a book, configure the settings, and let AI create draft
+          flashcards for you to review.
         </Typography>
 
         {/* Action Buttons */}
@@ -62,7 +63,11 @@ export default function GenerationPage() {
             <Typography variant="h6" fontWeight={600}>
               Ready to Generate Flashcards?
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 500 }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ maxWidth: 500 }}
+            >
               Upload a book or select an existing one to generate flashcards
             </Typography>
             <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
@@ -115,7 +120,8 @@ export default function GenerationPage() {
           Review Drafts
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Review, edit, and approve generated drafts to add them to your card collection.
+          Review, edit, and approve generated drafts to add them to your card
+          collection.
         </Typography>
         <DraftReviewList bookId={selectedBookId ?? undefined} />
       </Box>
@@ -136,5 +142,5 @@ export default function GenerationPage() {
         onSuccess={handleUploadSuccess}
       />
     </Box>
-  );
+  )
 }

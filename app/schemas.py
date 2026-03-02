@@ -1,6 +1,5 @@
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional
 from pydantic import BaseModel, Field, EmailStr, constr
 
 
@@ -58,25 +57,64 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    username: Optional[str] = None
+    username: str | None = None
+
+
+# Template Schemas
+class TemplateFieldSchema(BaseModel):
+    name: str
+    label: str
+    type: str = "text"
+    description: str
+    show_on_front: bool = False
+    required: bool = True
+
+class TemplateBase(BaseModel):
+    name: str
+    description: str | None = None
+    fields: list[TemplateFieldSchema]
+    system_prompt: str | None = None
+    is_default: bool = False
+
+class TemplateCreate(TemplateBase):
+    pass
+
+class TemplateUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    fields: list[TemplateFieldSchema] | None = None
+    system_prompt: str | None = None
+    is_default: bool | None = None
+
+class TemplateResponse(TemplateBase):
+    id: str
+    date_created: datetime
+    last_edited: datetime
+    owner_id: str | None = Field(None, alias="owner") # Use alias for reference field
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True
 
 
 # Card Schemas
 class CardBase(BaseModel):
     front: str
     back: str
-    example_original: Optional[str] = None
-    example_translation: Optional[str] = None
-    examples: Optional[List[ExampleSentenceSchema]] = None
-    synonyms: Optional[List[str]] = None
-    antonyms: Optional[List[str]] = None
-    part_of_speech: Optional[str] = None
-    gender: Optional[str] = None
-    plural_form: Optional[str] = None
-    pronunciation: Optional[str] = None
-    notes: Optional[str] = None
-    tags: Optional[List[str]] = None
+    example_original: str | None = None
+    example_translation: str | None = None
+    examples: list[ExampleSentenceSchema] | None = None
+    synonyms: list[str] | None = None
+    antonyms: list[str] | None = None
+    part_of_speech: str | None = None
+    gender: str | None = None
+    plural_form: str | None = None
+    pronunciation: str | None = None
+    notes: str | None = None
+    tags: list[str] | None = None
     hardness_level: HardnessLevel = HardnessLevel.MEDIUM
+    template_id: str | None = None
+    custom_fields: dict | None = None
 
 
 class CardCreate(CardBase):
@@ -84,29 +122,31 @@ class CardCreate(CardBase):
 
 
 class CardUpdate(BaseModel):
-    front: Optional[str] = None
-    back: Optional[str] = None
-    example_original: Optional[str] = None
-    example_translation: Optional[str] = None
-    examples: Optional[List[ExampleSentenceSchema]] = None
-    synonyms: Optional[List[str]] = None
-    antonyms: Optional[List[str]] = None
-    part_of_speech: Optional[str] = None
-    gender: Optional[str] = None
-    plural_form: Optional[str] = None
-    pronunciation: Optional[str] = None
-    notes: Optional[str] = None
-    tags: Optional[List[str]] = None
-    hardness_level: Optional[HardnessLevel] = None
+    front: str | None = None
+    back: str | None = None
+    example_original: str | None = None
+    example_translation: str | None = None
+    examples: list[ExampleSentenceSchema] | None = None
+    synonyms: list[str] | None = None
+    antonyms: list[str] | None = None
+    part_of_speech: str | None = None
+    gender: str | None = None
+    plural_form: str | None = None
+    pronunciation: str | None = None
+    notes: str | None = None
+    tags: list[str] | None = None
+    hardness_level: HardnessLevel | None = None
+    template_id: str | None = None
+    custom_fields: dict | None = None
 
 
 class Card(CardBase):
     id: str
     date_created: datetime
     last_edited: datetime
-    last_visited: Optional[datetime] = None
-    source_book_id: Optional[str] = None
-    source_page: Optional[int] = None
+    last_visited: datetime | None = None
+    source_book_id: str | None = None
+    source_page: int | None = None
 
     class Config:
         from_attributes = True
@@ -115,7 +155,7 @@ class Card(CardBase):
 # Deck Schemas
 class DeckBase(BaseModel):
     name: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class DeckCreate(DeckBase):
@@ -125,47 +165,47 @@ class DeckCreate(DeckBase):
 
 
 class DeckUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    card_ids: Optional[List[str]] = None
+    name: str | None = None
+    description: str | None = None
+    card_ids: list[str] | None = None
 
 
 class Deck(DeckBase):
     id: str
-    cards: List[Card] = Field(default_factory=lambda: list, description="List of cards")
+    cards: list[Card] = Field(default_factory=lambda: list, description="List of cards")
 
     class Config:
         from_attributes = True
 
 
 class SearchResponse(BaseModel):
-    results: List[Card]
-    next_cursor: Optional[str] = None
+    results: list[Card]
+    next_cursor: str | None = None
 
 
 # Book Schemas
 class BookBase(BaseModel):
     title: str
-    target_language: Optional[str] = None
-    native_language: Optional[str] = None
+    target_language: str | None = None
+    native_language: str | None = None
 
 
 class BookCreate(BookBase):
-    chapters: Optional[List[ChapterSchema]] = None
+    chapters: list[ChapterSchema] | None = None
 
 
 class BookUpdate(BaseModel):
-    title: Optional[str] = None
-    target_language: Optional[str] = None
-    native_language: Optional[str] = None
-    chapters: Optional[List[ChapterSchema]] = None
+    title: str | None = None
+    target_language: str | None = None
+    native_language: str | None = None
+    chapters: list[ChapterSchema] | None = None
 
 
 class BookResponse(BookBase):
     id: str
     filename: str
     total_pages: int
-    chapters: List[ChapterSchema] = []
+    chapters: list[ChapterSchema] = []
     date_created: datetime
     last_edited: datetime
 
@@ -176,19 +216,19 @@ class BookResponse(BookBase):
 # BookProgress Schemas
 class BookProgressBase(BaseModel):
     current_page: int = 1
-    current_chapter: Optional[str] = None
+    current_chapter: str | None = None
 
 
 class BookProgressUpdate(BaseModel):
-    current_page: Optional[int] = None
-    current_chapter: Optional[str] = None
+    current_page: int | None = None
+    current_chapter: str | None = None
 
 
 class BookProgressResponse(BookProgressBase):
     id: str
     book_id: str
-    pages_processed: List[PageRangeSchema] = []
-    chapters_completed: List[str] = []
+    pages_processed: list[PageRangeSchema] = []
+    chapters_completed: list[str] = []
     date_created: datetime
     last_edited: datetime
 
@@ -200,38 +240,42 @@ class BookProgressResponse(BookProgressBase):
 class DraftCardBase(BaseModel):
     front: str
     back: str
-    examples: Optional[List[ExampleSentenceSchema]] = None
-    synonyms: Optional[List[str]] = None
-    antonyms: Optional[List[str]] = None
-    part_of_speech: Optional[str] = None
-    gender: Optional[str] = None
-    plural_form: Optional[str] = None
-    pronunciation: Optional[str] = None
-    notes: Optional[str] = None
-    tags: Optional[List[str]] = None
+    examples: list[ExampleSentenceSchema] | None = None
+    synonyms: list[str] | None = None
+    antonyms: list[str] | None = None
+    part_of_speech: str | None = None
+    gender: str | None = None
+    plural_form: str | None = None
+    pronunciation: str | None = None
+    notes: str | None = None
+    tags: list[str] | None = None
+    template_id: str | None = None
+    custom_fields: dict | None = None
 
 
 class DraftCardUpdate(BaseModel):
-    front: Optional[str] = None
-    back: Optional[str] = None
-    examples: Optional[List[ExampleSentenceSchema]] = None
-    synonyms: Optional[List[str]] = None
-    antonyms: Optional[List[str]] = None
-    part_of_speech: Optional[str] = None
-    gender: Optional[str] = None
-    plural_form: Optional[str] = None
-    pronunciation: Optional[str] = None
-    notes: Optional[str] = None
-    tags: Optional[List[str]] = None
+    front: str | None = None
+    back: str | None = None
+    examples: list[ExampleSentenceSchema] | None = None
+    synonyms: list[str] | None = None
+    antonyms: list[str] | None = None
+    part_of_speech: str | None = None
+    gender: str | None = None
+    plural_form: str | None = None
+    pronunciation: str | None = None
+    notes: str | None = None
+    tags: list[str] | None = None
+    template_id: str | None = None
+    custom_fields: dict | None = None
 
 
 class DraftCardResponse(DraftCardBase):
     id: str
     status: DraftCardStatus
     book_id: str
-    source_page_start: Optional[int] = None
-    source_page_end: Optional[int] = None
-    generation_batch_id: Optional[str] = None
+    source_page_start: int | None = None
+    source_page_end: int | None = None
+    generation_batch_id: str | None = None
     date_created: datetime
 
     class Config:
@@ -243,6 +287,7 @@ class GenerateNextBatchRequest(BaseModel):
     book_id: str
     num_pages: int = Field(default=5, le=20)
     num_cards: int = 10
+    template_id: str | None = None
 
 
 class GenerateFromRangeRequest(BaseModel):
@@ -250,18 +295,19 @@ class GenerateFromRangeRequest(BaseModel):
     start_page: int
     end_page: int
     num_cards: int = 10
+    template_id: str | None = None
 
 
 class GenerationResponse(BaseModel):
     batch_id: str
-    drafts: List[DraftCardResponse]
+    drafts: list[DraftCardResponse]
     pages_processed: PageRangeSchema
     message: str
 
 
 class BulkApproveRequest(BaseModel):
-    draft_ids: List[str]
-    deck_id: Optional[str] = None
+    draft_ids: list[str]
+    deck_id: str | None = None
 
 
 # Storage Configuration Schemas
@@ -279,7 +325,7 @@ class StorageQuota(BaseModel):
 
 
 class StorageConfigResponse(BaseModel):
-    storage_type: Optional[str] = None
+    storage_type: str | None = None
     is_configured: bool
     quota: StorageQuota
 

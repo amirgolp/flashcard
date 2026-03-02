@@ -5,16 +5,16 @@ import {
   DialogContentText,
   DialogActions,
   Button,
-} from '@mui/material';
+} from '@mui/material'
 
 interface ConfirmDialogProps {
-  open: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  title: string;
-  message: string;
-  confirmLabel?: string;
-  confirmColor?: 'error' | 'primary';
+  open: boolean
+  onClose: () => void
+  onConfirm: () => void
+  title: string
+  message: string
+  confirmLabel?: string
+  confirmColor?: 'error' | 'primary'
 }
 
 export default function ConfirmDialog({
@@ -27,9 +27,9 @@ export default function ConfirmDialog({
   confirmColor = 'primary',
 }: ConfirmDialogProps) {
   const handleConfirm = () => {
-    onConfirm();
-    onClose();
-  };
+    onConfirm()
+    onClose()
+  }
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
@@ -39,10 +39,15 @@ export default function ConfirmDialog({
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={handleConfirm} color={confirmColor} variant="contained" autoFocus>
+        <Button
+          onClick={handleConfirm}
+          color={confirmColor}
+          variant="contained"
+          autoFocus
+        >
           {confirmLabel}
         </Button>
       </DialogActions>
     </Dialog>
-  );
+  )
 }

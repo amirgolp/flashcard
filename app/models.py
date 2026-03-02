@@ -11,6 +11,7 @@ from mongoengine import (
     EmbeddedDocumentListField,
     EmbeddedDocumentField,
     DictField,
+    BooleanField,
     CASCADE,
 )
 from datetime import datetime
@@ -45,6 +46,9 @@ class UserStorageConfig(EmbeddedDocument):
     google_refresh_token = StringField()  # Refresh token for re-authentication
 
 
+
+
+
 class User(Document):
     username = StringField(required=True, unique=True)
     email = StringField(required=True, unique=True)
@@ -70,6 +74,31 @@ class User(Document):
         return bcrypt.checkpw(
             password.encode("utf-8"), self.hashed_password.encode("utf-8")
         )
+
+
+class TemplateField(EmbeddedDocument):
+    name = StringField(required=True)
+    label = StringField(required=True)
+    type = StringField(choices=['text', 'textarea', 'list'], default='text')
+    description = StringField(required=True)
+    show_on_front = BooleanField(default=False)
+    required = BooleanField(default=True)
+
+
+class Template(Document):
+    name = StringField(required=True)
+    description = StringField()
+    fields = EmbeddedDocumentListField(TemplateField)
+    system_prompt = StringField()
+    is_default = BooleanField(default=False)
+    date_created = DateTimeField(default=datetime.utcnow)
+    last_edited = DateTimeField(default=datetime.utcnow)
+    owner = ReferenceField('User', reverse_delete_rule=CASCADE)
+
+    meta = {"indexes": ["owner", "is_default"]}
+
+    def clean(self):
+        self.last_edited = datetime.utcnow()
 
 
 class Book(Document):
@@ -111,6 +140,8 @@ class Card(Document):
     notes = StringField()
     tags = ListField(StringField())
     hardness_level = EnumField(HardnessLevel, default=HardnessLevel.MEDIUM)
+    template_id = ReferenceField(Template)
+    custom_fields = DictField()
     date_created = DateTimeField(default=datetime.utcnow)
     last_edited = DateTimeField(default=datetime.utcnow)
     last_visited = DateTimeField()
@@ -197,6 +228,8 @@ class DraftCard(Document):
     pronunciation = StringField()
     notes = StringField()
     tags = ListField(StringField())
+    template_id = ReferenceField(Template)
+    custom_fields = DictField()
     status = EnumField(DraftCardStatus, default=DraftCardStatus.PENDING)
     book = ReferenceField(Book, required=True, reverse_delete_rule=CASCADE)
     source_page_start = IntField()

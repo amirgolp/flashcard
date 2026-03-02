@@ -1,11 +1,11 @@
-import { Suspense } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { RouterProvider } from '@tanstack/react-router';
-import { AuthProvider } from './context/AuthContext';
-import { ThemeContextProvider } from './theme/ThemeContextProvider';
-import { router } from './routes/router';
-import CircularProgress from '@mui/material/CircularProgress';
-import Box from '@mui/material/Box';
+import { Suspense } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { RouterProvider } from '@tanstack/react-router'
+import { AuthProvider } from './context/AuthContext'
+import { ThemeContextProvider } from './theme/ThemeContextProvider'
+import { router } from './routes/router'
+import CircularProgress from '@mui/material/CircularProgress'
+import Box from '@mui/material/Box'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -14,14 +14,21 @@ const queryClient = new QueryClient({
       retry: 1,
     },
   },
-});
+})
 
 function LoadingFallback() {
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+      }}
+    >
       <CircularProgress />
     </Box>
-  );
+  )
 }
 
 export default function App() {
@@ -35,5 +42,5 @@ export default function App() {
         </ThemeContextProvider>
       </AuthProvider>
     </QueryClientProvider>
-  );
+  )
 }

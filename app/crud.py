@@ -4,7 +4,7 @@ from typing import List, Tuple, Optional
 from . import schemas
 from .models import (
     Deck, Card, User, Book, BookProgress, DraftCard,
-    Chapter, PageRange, ExampleSentence,
+    Chapter, PageRange, ExampleSentence, Template, TemplateField
 )
 from .utils.gemini import (
     generate_flashcards_from_pdf,
@@ -39,6 +39,8 @@ def _card_to_response(card_doc) -> schemas.Card:
         notes=card_doc.notes,
         tags=card_doc.tags or [],
         hardness_level=card_doc.hardness_level,
+        template_id=str(card_doc.template_id.id) if card_doc.template_id else None,
+        custom_fields=card_doc.custom_fields or {},
         date_created=card_doc.date_created,
         last_edited=card_doc.last_edited,
         last_visited=card_doc.last_visited,
@@ -103,6 +105,8 @@ def _draft_to_response(draft_doc) -> schemas.DraftCardResponse:
         pronunciation=draft_doc.pronunciation,
         notes=draft_doc.notes,
         tags=draft_doc.tags or [],
+        template_id=str(draft_doc.template_id.id) if draft_doc.template_id else None,
+        custom_fields=draft_doc.custom_fields or {},
         status=draft_doc.status,
         book_id=str(draft_doc.book.id),
         source_page_start=draft_doc.source_page_start,
@@ -124,14 +128,14 @@ def _examples_to_embedded(examples_data):
 
 # ---- User CRUD ----
 
-def get_user_by_username(username: str, db: str = "default") -> Optional[User]:
+def get_user_by_username(username: str, db: str = "default") -> User | None:
     try:
         return User.objects(username=username).using(db).first()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def get_user_by_email(email: str, db: str = "default") -> Optional[User]:
+def get_user_by_email(email: str, db: str = "default") -> User | None:
     try:
         return User.objects(email=email).using(db).first()
     except Exception as e:
@@ -157,13 +161,145 @@ def create_user(
 
 def authenticate_user(
     username: str, password: str, db: str = "default"
-) -> Optional[User]:
+) -> User | None:
     user = get_user_by_username(username, db)
     if not user:
         return None
     if not user.check_password(password):
         return None
     return user
+
+
+# ---- Template CRUD ----
+
+def _template_to_response(template_doc: Template) -> schemas.TemplateResponse:
+    return schemas.TemplateResponse(
+        id=str(template_doc.id),
+        name=template_doc.name,
+        description=template_doc.description,
+        fields=[
+            schemas.TemplateFieldSchema(
+                name=f.name,
+                label=f.label,
+                type=f.type,
+                description=f.description,
+                show_on_front=f.show_on_front,
+                required=f.required
+            ) for f in template_doc.fields
+        ],
+        system_prompt=template_doc.system_prompt,
+        is_default=template_doc.is_default,
+        date_created=template_doc.date_created,
+        last_edited=template_doc.last_edited,
+        owner=str(template_doc.owner.id) if template_doc.owner else None
+    )
+
+def create_template(template: schemas.TemplateCreate, db: str = "default", owner: User = None) -> schemas.TemplateResponse:
+    fields = [
+        TemplateField(
+            name=f.name,
+            label=f.label,
+            type=f.type,
+            description=f.description,
+            show_on_front=f.show_on_front,
+            required=f.required
+        ) for f in template.fields
+    ]
+    template_doc = Template(
+        name=template.name,
+        description=template.description,
+        fields=fields,
+        system_prompt=template.system_prompt,
+        is_default=template.is_default,
+        owner=owner if not template.is_default else None
+    )
+    template_doc.save()
+    return _template_to_response(template_doc)
+
+def get_template(template_id: str, db: str = "default", owner: User = None) -> schemas.TemplateResponse | None:
+    try:
+        query = Q(id=ObjectId(template_id)) & (Q(owner=owner) | Q(is_default=True))
+        template_doc = Template.objects.get(query)
+        return _template_to_response(template_doc)
+    except Template.DoesNotExist:
+        return None
+    except Exception:
+        return None
+
+def update_template(template_id: str, template_update: schemas.TemplateUpdate, db: str = "default", owner: User = None) -> schemas.TemplateResponse | None:
+    try:
+        template_doc = Template.objects.get(id=ObjectId(template_id), owner=owner, is_default=False)
+        update_data = template_update.model_dump(exclude_unset=True)
+        if "fields" in update_data:
+            template_doc.fields = [
+                TemplateField(**f) for f in update_data["fields"]
+            ]
+            del update_data["fields"]
+        
+        for key, value in update_data.items():
+            setattr(template_doc, key, value)
+            
+        template_doc.clean()
+        template_doc.save()
+        return _template_to_response(template_doc)
+    except Exception:
+        return None
+
+def delete_template(template_id: str, db: str = "default", owner: User = None) -> bool:
+    try:
+        template_doc = Template.objects.get(id=ObjectId(template_id), owner=owner, is_default=False)
+        template_doc.delete()
+        return True
+    except Exception:
+        return False
+
+def list_templates(skip: int = 0, limit: int = 50, include_defaults: bool = True, db: str = "default", owner: User = None) -> list[schemas.TemplateResponse]:
+    if include_defaults:
+        query = Q(owner=owner) | Q(is_default=True)
+    else:
+        query = Q(owner=owner)
+    templates = Template.objects.filter(query).skip(skip).limit(limit)
+    return [_template_to_response(t) for t in templates]
+
+
+def seed_default_templates():
+    default_templates = [
+        {
+            "name": "Standard Flashcard",
+            "description": "A basic two-sided flashcard for general learning.",
+            "is_default": True,
+            "fields": [
+                {"name": "front", "label": "Front", "type": "text", "description": "The main question, concept, or word", "show_on_front": True, "required": True},
+                {"name": "back", "label": "Back", "type": "textarea", "description": "The detailed answer, translation, or definition", "show_on_front": False, "required": True},
+            ],
+            "system_prompt": "Focus on extracting the most important concepts and presenting them as clear, concise question-and-answer pairs."
+        },
+        {
+            "name": "Language Learning (Detailed)",
+            "description": "Comprehensive template for learning vocabulary with examples and grammar.",
+            "is_default": True,
+            "fields": [
+                {"name": "word", "label": "Word", "type": "text", "description": "The vocabulary word in the target language", "show_on_front": True, "required": True},
+                {"name": "translation", "label": "Translation", "type": "text", "description": "The translation in the native language", "show_on_front": False, "required": True},
+                {"name": "pronunciation", "label": "Pronunciation", "type": "text", "description": "IPA pronunciation guide or phonetic spelling", "show_on_front": True, "required": False},
+                {"name": "part_of_speech", "label": "Part of Speech", "type": "text", "description": "The grammatical category (e.g., noun, verb, adjective)", "show_on_front": False, "required": False},
+                {"name": "examples", "label": "Examples", "type": "list", "description": "A list of 2-3 example sentences demonstrating usage in the target language, each followed by its translation.", "show_on_front": False, "required": False},
+                {"name": "notes", "label": "Notes", "type": "textarea", "description": "Cultural context, irregular grammar rules, or usage notes.", "show_on_front": False, "required": False},
+            ],
+            "system_prompt": "Extract vocabulary words specifically tailored for language learners. Provide accurate pronunciation guides, parts of speech, and highly illustrative, natural-sounding example sentences."
+        }
+    ]
+
+    for template_data in default_templates:
+        if not Template.objects(name=template_data["name"]).first():
+            fields = [TemplateField(**f) for f in template_data["fields"]]
+            Template(
+                name=template_data["name"],
+                description=template_data["description"],
+                fields=fields,
+                system_prompt=template_data["system_prompt"],
+                is_default=True
+            ).save()
 
 
 # ---- Deck CRUD ----
@@ -187,7 +323,7 @@ def create_deck(
 
 def get_deck(
     deck_id: str, db: str = "default", owner: User = None
-) -> Optional[schemas.Deck]:
+) -> schemas.Deck | None:
     try:
         deck_doc = Deck.objects.using(db).get(id=ObjectId(deck_id), owner=owner)
         return _deck_to_response(deck_doc)
@@ -202,7 +338,7 @@ def update_deck(
     deck_update: schemas.DeckUpdate,
     db: str = "default",
     owner: User = None,
-) -> Optional[schemas.Deck]:
+) -> schemas.Deck | None:
     try:
         deck_doc = Deck.objects.using(db).get(id=ObjectId(deck_id), owner=owner)
         if deck_update.name is not None:
@@ -234,7 +370,7 @@ def delete_deck(deck_id: str, db: str = "default", owner: User = None) -> bool:
 
 def list_decks(
     skip: int, limit: int, db: str = "default", owner: User = None
-) -> List[schemas.Deck]:
+) -> list[schemas.Deck]:
     try:
         deck_docs = Deck.objects(owner=owner).using(db).skip(skip).limit(limit)
         return [_deck_to_response(deck) for deck in deck_docs]
@@ -273,7 +409,7 @@ def create_card(
 
 def get_card(
     card_id: str, db: str = "default", owner: User = None
-) -> Optional[schemas.Card]:
+) -> schemas.Card | None:
     try:
         card_doc = Card.objects.using(db).get(id=ObjectId(card_id), owner=owner)
         return _card_to_response(card_doc)
@@ -288,7 +424,7 @@ def update_card(
     card_update: schemas.CardUpdate,
     db: str = "default",
     owner: User = None,
-) -> Optional[schemas.Card]:
+) -> schemas.Card | None:
     try:
         card_doc = Card.objects.using(db).get(id=ObjectId(card_id), owner=owner)
         for field in [
@@ -328,7 +464,7 @@ def delete_card(card_id: str, db: str = "default", owner: User = None) -> bool:
 
 def list_cards(
     skip: int, limit: int, db: str = "default", owner: User = None
-) -> List[schemas.Card]:
+) -> list[schemas.Card]:
     try:
         card_docs = Card.objects(owner=owner).using(db).skip(skip).limit(limit)
         return [_card_to_response(card) for card in card_docs]
@@ -340,11 +476,11 @@ def list_cards(
 
 def search_cards(
     query: str,
-    cursor: Optional[str],
+    cursor: str | None,
     limit: int,
     db: str = "default",
     owner: User = None,
-) -> Tuple[List[schemas.Card], Optional[str]]:
+) -> tuple[list[schemas.Card], str | None]:
     try:
         q = (
             Q(front__icontains=query)
@@ -402,7 +538,7 @@ def create_book(
 
 def get_book(
     book_id: str, db: str = "default", owner: User = None
-) -> Optional[schemas.BookResponse]:
+) -> schemas.BookResponse | None:
     try:
         book = Book.objects.using(db).get(id=ObjectId(book_id), owner=owner)
         return _book_to_response(book)
@@ -414,7 +550,7 @@ def get_book(
 
 def list_books(
     skip: int, limit: int, db: str = "default", owner: User = None
-) -> List[schemas.BookResponse]:
+) -> list[schemas.BookResponse]:
     try:
         books = Book.objects(owner=owner).using(db).skip(skip).limit(limit)
         return [_book_to_response(b) for b in books]
@@ -427,7 +563,7 @@ def update_book(
     book_update: schemas.BookUpdate,
     db: str = "default",
     owner: User = None,
-) -> Optional[schemas.BookResponse]:
+) -> schemas.BookResponse | None:
     try:
         book = Book.objects.using(db).get(id=ObjectId(book_id), owner=owner)
         if book_update.title is not None:
@@ -486,7 +622,7 @@ def update_progress(
     progress_update: schemas.BookProgressUpdate,
     db: str = "default",
     owner: User = None,
-) -> Optional[schemas.BookProgressResponse]:
+) -> schemas.BookProgressResponse | None:
     try:
         book = Book.objects.using(db).get(id=ObjectId(book_id), owner=owner)
         progress = BookProgress.objects.using(db).get(book=book, owner=owner)
@@ -535,6 +671,7 @@ def _is_chapter_completed(chapter: Chapter, processed_ranges: list) -> bool:
 
 def generate_next_batch(
     book_id: str, num_pages: int, num_cards: int,
+    template_id: str = None,
     db: str = "default", owner: User = None,
 ) -> schemas.GenerationResponse:
     try:
@@ -547,7 +684,7 @@ def generate_next_batch(
         if start_page > book.total_pages:
             raise HTTPException(status_code=400, detail="All pages have been processed")
 
-        return _generate_and_store_drafts(book, start_page, end_page, num_cards, db, owner)
+        return _generate_and_store_drafts(book, start_page, end_page, num_cards, db, owner, template_id)
     except Book.DoesNotExist:
         raise HTTPException(status_code=404, detail="Book not found")
     except BookProgress.DoesNotExist:
@@ -556,6 +693,7 @@ def generate_next_batch(
 
 def generate_from_range(
     book_id: str, start_page: int, end_page: int, num_cards: int,
+    template_id: str = None,
     db: str = "default", owner: User = None,
 ) -> schemas.GenerationResponse:
     try:
@@ -564,23 +702,28 @@ def generate_from_range(
         if start_page < 1 or end_page > book.total_pages or start_page > end_page:
             raise HTTPException(status_code=400, detail="Invalid page range")
 
-        return _generate_and_store_drafts(book, start_page, end_page, num_cards, db, owner)
+        return _generate_and_store_drafts(book, start_page, end_page, num_cards, db, owner, template_id)
     except Book.DoesNotExist:
         raise HTTPException(status_code=404, detail="Book not found")
 
 
 def _generate_and_store_drafts(
     book: Book, start_page: int, end_page: int, num_cards: int,
-    db: str, owner: User,
+    db: str, owner: User, template_id: str = None,
 ) -> schemas.GenerationResponse:
+    
+    template = None
+    if template_id:
+        try:
+            template = Template.objects.using(db).get(id=ObjectId(template_id))
+        except Template.DoesNotExist:
+            raise HTTPException(status_code=400, detail="Template not found")
+
     # 1. Read PDF from storage
     if book.storage_type == 'gridfs' or (book.file and not book.storage_file_id):
         full_pdf_bytes = book.file.read()
     else:
-        # Import here to avoid circular imports? Or move import to top if safe. 
-        # Moving import to top might key circular dependency if storage_adapter imports crud/models.
-        # storage_adapter imports get_storage_adapter from .utils.storage_adapter
-        from .utils.storage_adapter import get_storage_adapter, AppDriveStorageAdapter
+        from .utils.storage_adapter import get_storage_adapter
         
         if book.storage_type == 'telegram':
             adapter = get_storage_adapter('telegram', {
@@ -608,36 +751,60 @@ def _generate_and_store_drafts(
         num_cards=num_cards,
         target_language=book.target_language or "the target language",
         native_language=book.native_language or "English",
+        template=template,
     )
 
     # 3. Store as DraftCard documents
     batch_id = str(uuid.uuid4())
     drafts = []
     for fc in result.flashcards:
-        draft = DraftCard(
-            front=fc.front,
-            back=fc.back,
-            examples=[
-                ExampleSentence(
-                    sentence=ex.get('sentence', ''),
-                    translation=ex.get('translation', '')
-                )
-                for ex in fc.examples
-            ],
-            synonyms=fc.synonyms,
-            antonyms=fc.antonyms,
-            part_of_speech=fc.part_of_speech,
-            gender=fc.gender,
-            plural_form=fc.plural_form,
-            pronunciation=fc.pronunciation,
-            notes=fc.notes,
-            tags=[f"page-{start_page}-{end_page}"],
-            book=book,
-            source_page_start=start_page,
-            source_page_end=end_page,
-            generation_batch_id=batch_id,
-            owner=owner,
-        )
+        if template:
+            fc_dict = fc.model_dump()
+            custom_fields = {f.name: fc_dict.get(f.name) for f in template.fields}
+            
+            front_field = next((f.name for f in template.fields if f.show_on_front), template.fields[0].name if template.fields else "front")
+            back_field = next((f.name for f in template.fields if not f.show_on_front), template.fields[-1].name if template.fields else "back")
+            
+            front_val = fc_dict.get(front_field)
+            back_val = fc_dict.get(back_field)
+            
+            draft = DraftCard(
+                front=str(front_val) if front_val else "Template Generated Front",
+                back=str(back_val) if back_val else "Template Generated Back",
+                template_id=template,
+                custom_fields=custom_fields,
+                tags=[f"page-{start_page}-{end_page}"],
+                book=book,
+                source_page_start=start_page,
+                source_page_end=end_page,
+                generation_batch_id=batch_id,
+                owner=owner,
+            )
+        else:
+            draft = DraftCard(
+                front=fc.front,
+                back=fc.back,
+                examples=[
+                    ExampleSentence(
+                        sentence=ex.get('sentence', ''),
+                        translation=ex.get('translation', '')
+                    )
+                    for ex in fc.examples
+                ],
+                synonyms=fc.synonyms,
+                antonyms=fc.antonyms,
+                part_of_speech=fc.part_of_speech,
+                gender=fc.gender,
+                plural_form=fc.plural_form,
+                pronunciation=fc.pronunciation,
+                notes=fc.notes,
+                tags=[f"page-{start_page}-{end_page}"],
+                book=book,
+                source_page_start=start_page,
+                source_page_end=end_page,
+                generation_batch_id=batch_id,
+                owner=owner,
+            )
         draft.save(using=db)
         drafts.append(draft)
 
@@ -658,7 +825,7 @@ def list_drafts(
     book_id: str = None, batch_id: str = None, status: str = "pending",
     skip: int = 0, limit: int = 50,
     db: str = "default", owner: User = None,
-) -> List[schemas.DraftCardResponse]:
+) -> list[schemas.DraftCardResponse]:
     try:
         query = {"owner": owner}
         if book_id:
@@ -676,7 +843,7 @@ def list_drafts(
 def update_draft(
     draft_id: str, draft_update: schemas.DraftCardUpdate,
     db: str = "default", owner: User = None,
-) -> Optional[schemas.DraftCardResponse]:
+) -> schemas.DraftCardResponse | None:
     try:
         draft = DraftCard.objects.using(db).get(id=ObjectId(draft_id), owner=owner)
         for field in [
@@ -705,7 +872,7 @@ def update_draft(
 def approve_draft(
     draft_id: str, deck_id: str = None,
     db: str = "default", owner: User = None,
-) -> Optional[schemas.Card]:
+) -> schemas.Card | None:
     try:
         draft = DraftCard.objects.using(db).get(id=ObjectId(draft_id), owner=owner)
 
@@ -721,6 +888,8 @@ def approve_draft(
             pronunciation=draft.pronunciation,
             notes=draft.notes,
             tags=draft.tags,
+            template_id=draft.template_id,
+            custom_fields=draft.custom_fields,
             source_book=draft.book,
             source_page=draft.source_page_start,
             owner=owner,
@@ -745,9 +914,9 @@ def approve_draft(
 
 
 def bulk_approve_drafts(
-    draft_ids: List[str], deck_id: str = None,
+    draft_ids: list[str], deck_id: str = None,
     db: str = "default", owner: User = None,
-) -> List[schemas.Card]:
+) -> list[schemas.Card]:
     cards = []
     for draft_id in draft_ids:
         card = approve_draft(draft_id, deck_id, db, owner)

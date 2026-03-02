@@ -1,32 +1,32 @@
-import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid';
-import Paper from '@mui/material/Paper';
-import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemText from '@mui/material/ListItemText';
-import Divider from '@mui/material/Divider';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import AddIcon from '@mui/icons-material/Add';
-import SchoolIcon from '@mui/icons-material/School';
-import MenuBookIcon from '@mui/icons-material/MenuBook';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import StyleIcon from '@mui/icons-material/Style';
-import { useNavigate } from '@tanstack/react-router';
-import { useCards } from '../hooks/useCards';
-import { useDecks } from '../hooks/useDecks';
-import { useBooks } from '../hooks/useBooks';
-import { useDrafts } from '../hooks/useGeneration';
-import type { ReactNode } from 'react';
+import Box from '@mui/material/Box'
+import Grid from '@mui/material/Grid'
+import Paper from '@mui/material/Paper'
+import Typography from '@mui/material/Typography'
+import Button from '@mui/material/Button'
+import CircularProgress from '@mui/material/CircularProgress'
+import List from '@mui/material/List'
+import ListItem from '@mui/material/ListItem'
+import ListItemText from '@mui/material/ListItemText'
+import Divider from '@mui/material/Divider'
+import DashboardIcon from '@mui/icons-material/Dashboard'
+import AddIcon from '@mui/icons-material/Add'
+import SchoolIcon from '@mui/icons-material/School'
+import MenuBookIcon from '@mui/icons-material/MenuBook'
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
+import StyleIcon from '@mui/icons-material/Style'
+import { useNavigate } from '@tanstack/react-router'
+import { useCards } from '../hooks/useCards'
+import { useDecks } from '../hooks/useDecks'
+import { useBooks } from '../hooks/useBooks'
+import { useDrafts } from '../hooks/useGeneration'
+import type { ReactNode } from 'react'
 
 interface StatCardProps {
-  icon: ReactNode;
-  label: string;
-  value: number | undefined;
-  color: string;
-  isLoading: boolean;
+  icon: ReactNode
+  label: string
+  value: number | undefined
+  color: string
+  isLoading: boolean
 }
 
 function StatCard({ icon, label, value, color, isLoading }: StatCardProps) {
@@ -42,7 +42,9 @@ function StatCard({ icon, label, value, color, isLoading }: StatCardProps) {
         borderColor: `${color}.main`,
       }}
     >
-      <Box sx={{ color: `${color}.main`, display: 'flex', alignItems: 'center' }}>
+      <Box
+        sx={{ color: `${color}.main`, display: 'flex', alignItems: 'center' }}
+      >
         {icon}
       </Box>
       <Box>
@@ -58,17 +60,19 @@ function StatCard({ icon, label, value, color, isLoading }: StatCardProps) {
         </Typography>
       </Box>
     </Paper>
-  );
+  )
 }
 
 export default function DashboardPage() {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
 
-  const { data: cards, isLoading: cardsLoading } = useCards(0, 100);
-  const { data: recentCards, isLoading: recentLoading } = useCards(0, 5);
-  const { data: decks, isLoading: decksLoading } = useDecks(0, 100);
-  const { data: books, isLoading: booksLoading } = useBooks(0, 100);
-  const { data: pendingDrafts, isLoading: draftsLoading } = useDrafts({ status: 'pending' });
+  const { data: cards, isLoading: cardsLoading } = useCards(0, 100)
+  const { data: recentCards, isLoading: recentLoading } = useCards(0, 5)
+  const { data: decks, isLoading: decksLoading } = useDecks(0, 100)
+  const { data: books, isLoading: booksLoading } = useBooks(0, 100)
+  const { data: pendingDrafts, isLoading: draftsLoading } = useDrafts({
+    status: 'pending',
+  })
 
   return (
     <Box>
@@ -168,7 +172,10 @@ export default function DashboardPage() {
             <CircularProgress />
           </Box>
         ) : !recentCards?.length ? (
-          <Typography color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+          <Typography
+            color="text.secondary"
+            sx={{ py: 2, textAlign: 'center' }}
+          >
             No cards yet. Create your first flashcard to get started!
           </Typography>
         ) : (
@@ -177,9 +184,15 @@ export default function DashboardPage() {
               <Box key={card.id}>
                 {index > 0 && <Divider />}
                 <ListItem
-                  sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
+                  sx={{
+                    cursor: 'pointer',
+                    '&:hover': { bgcolor: 'action.hover' },
+                  }}
                   onClick={() =>
-                    navigate({ to: '/cards/$cardId', params: { cardId: card.id } })
+                    navigate({
+                      to: '/cards/$cardId',
+                      params: { cardId: card.id },
+                    })
                   }
                 >
                   <ListItemText
@@ -198,5 +211,5 @@ export default function DashboardPage() {
         )}
       </Paper>
     </Box>
-  );
+  )
 }
