@@ -1,7 +1,7 @@
 import os
 import io
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, create_model
 from google import genai
 from google.genai import types
 from PyPDF2 import PdfReader, PdfWriter
@@ -23,18 +23,18 @@ class GeminiFlashcard(BaseModel):
     # Let's try defining the inner class *inside* or just using standard types if possible,
     # or ensuring the naming doesn't conflict. 
     # Actually, the safest bet with this specific error is often to flatten or use dicts.
-    examples: List[dict] # [{"sentence": "...", "translation": "..."}]
-    synonyms: List[str]
-    antonyms: List[str]
+    examples: list[dict] # [{"sentence": "...", "translation": "..."}]
+    synonyms: list[str]
+    antonyms: list[str]
     part_of_speech: str
-    gender: Optional[str] = None
-    plural_form: Optional[str] = None
-    pronunciation: Optional[str] = None
-    notes: Optional[str] = None
+    gender: str | None = None
+    plural_form: str | None = None
+    pronunciation: str | None = None
+    notes: str | None = None
 
 
 class GeminiGenerationResult(BaseModel):
-    flashcards: List[GeminiFlashcard]
+    flashcards: list[GeminiFlashcard]
 
 
 def _get_client() -> genai.Client:
@@ -74,12 +74,36 @@ def generate_flashcards_from_pdf(
     num_cards: int = 10,
     target_language: str = "the target language",
     native_language: str = "English",
-) -> GeminiGenerationResult:
+    template=None,
+):
     """Send PDF page(s) to Gemini and return structured flashcard data."""
     client = _get_client()
     model = _get_model()
 
-    prompt = f"""You are a language learning assistant. Analyze the following PDF pages
+    if template:
+        prompt = f"You are a content extraction assistant. Analyze the following PDF pages.\n\n"
+        prompt += f"Extract approximately {num_cards} flashcards based on the provided material.\n\n"
+        prompt += f"{template.system_prompt or ''}\n\n"
+        prompt += "For each flashcard, provide the following fields:\n"
+        
+        for field in template.fields:
+            prompt += f"- {field.name}: {field.description}\n"
+            
+        prompt += "\nFocus on extracting high-quality, relevant content."
+
+        # Build dynamic pydantic schema
+        fields = {}
+        for f in template.fields:
+            if f.type == "list":
+                fields[f.name] = (list[str] if f.required else list[str] | None, ...)
+            else:
+                fields[f.name] = (str if f.required else str | None, ...)
+                
+        DynamicFlashcard = create_model("DynamicFlashcard", **fields)
+        response_schema = create_model("DynamicGenerationResult", flashcards=(list[DynamicFlashcard], ...))
+        
+    else:
+        prompt = f"""You are a language learning assistant. Analyze the following PDF pages
 from a {target_language} language learning textbook.
 
 Extract approximately {num_cards} vocabulary words or phrases that would make good
@@ -99,6 +123,7 @@ For each word/phrase, provide:
 - notes: any important usage notes, irregular forms, or cultural context
 
 Focus on the most useful and pedagogically valuable vocabulary from these pages."""
+        response_schema = GeminiGenerationResult
 
     response = client.models.generate_content(
         model=model,
@@ -111,11 +136,11 @@ Focus on the most useful and pedagogically valuable vocabulary from these pages.
         ],
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
-            response_schema=GeminiGenerationResult,
+            response_schema=response_schema,
             temperature=0.3,
         ),
     )
 
-    result = GeminiGenerationResult.model_validate_json(response.text)
+    result = response_schema.model_validate_json(response.text)
     logger.info(f"Gemini generated {len(result.flashcards)} flashcards")
     return result

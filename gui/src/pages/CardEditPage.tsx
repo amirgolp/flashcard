@@ -1,26 +1,37 @@
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import CircularProgress from '@mui/material/CircularProgress';
-import Alert from '@mui/material/Alert';
-import { useNavigate, useParams } from '@tanstack/react-router';
-import { useCard, useUpdateCard } from '../hooks/useCards';
-import CardForm from '../components/cards/CardForm';
-import { useState } from 'react';
+import Box from '@mui/material/Box'
+import Typography from '@mui/material/Typography'
+import CircularProgress from '@mui/material/CircularProgress'
+import Alert from '@mui/material/Alert'
+import { useNavigate, useParams } from '@tanstack/react-router'
+import { useCard, useUpdateCard } from '../hooks/useCards'
+import CardForm from '../components/cards/CardForm'
+import { useState } from 'react'
 
 export default function CardEditPage() {
-  const { cardId } = useParams({ strict: false }) as { cardId: string };
-  const navigate = useNavigate();
-  const { data: card, isLoading } = useCard(cardId);
-  const updateCard = useUpdateCard();
-  const [error, setError] = useState('');
+  const { cardId } = useParams({ strict: false }) as { cardId: string }
+  const navigate = useNavigate()
+  const { data: card, isLoading } = useCard(cardId)
+  const updateCard = useUpdateCard()
+  const [error, setError] = useState('')
 
-  if (isLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>;
-  if (!card) return <Typography>Card not found</Typography>;
+  if (isLoading)
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+        <CircularProgress />
+      </Box>
+    )
+  if (!card) return <Typography>Card not found</Typography>
 
   return (
     <Box>
-      <Typography variant="h4" sx={{ mb: 3 }}>Edit Card</Typography>
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      <Typography variant="h4" sx={{ mb: 3 }}>
+        Edit Card
+      </Typography>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
       <CardForm
         initialValues={{
           front: card.front,
@@ -39,13 +50,20 @@ export default function CardEditPage() {
         submitLabel="Update Card"
         isLoading={updateCard.isPending}
         onSubmit={(data) => {
-          setError('');
-          updateCard.mutate({ id: cardId, data }, {
-            onSuccess: () => navigate({ to: '/cards/$cardId', params: { cardId } }),
-            onError: (err) => setError(err instanceof Error ? err.message : 'Failed to update card'),
-          });
+          setError('')
+          updateCard.mutate(
+            { id: cardId, data },
+            {
+              onSuccess: () =>
+                navigate({ to: '/cards/$cardId', params: { cardId } }),
+              onError: (err) =>
+                setError(
+                  err instanceof Error ? err.message : 'Failed to update card',
+                ),
+            },
+          )
         }}
       />
     </Box>
-  );
+  )
 }

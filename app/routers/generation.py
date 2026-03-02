@@ -69,10 +69,10 @@ def generate_from_range(
 
 # ---- Draft Review Endpoints ----
 
-@router.get("/drafts", response_model=List[schemas.DraftCardResponse])
+@router.get("/drafts", response_model=list[schemas.DraftCardResponse])
 def list_drafts(
-    book_id: Optional[str] = None,
-    batch_id: Optional[str] = None,
+    book_id: str | None = None,
+    batch_id: str | None = None,
     status: str = "pending",
     skip: int = 0,
     limit: int = 50,
@@ -98,7 +98,7 @@ def update_draft(
 @router.post("/drafts/{draft_id}/approve", response_model=schemas.Card)
 def approve_draft(
     draft_id: str,
-    deck_id: Optional[str] = None,
+    deck_id: str | None = None,
     current_user: User = Depends(get_current_user),
     db: str = Depends(get_db),
 ):
@@ -108,7 +108,7 @@ def approve_draft(
     return card
 
 
-@router.post("/drafts/bulk-approve", response_model=List[schemas.Card])
+@router.post("/drafts/bulk-approve", response_model=list[schemas.Card])
 def bulk_approve_drafts(
     request: schemas.BulkApproveRequest,
     current_user: User = Depends(get_current_user),
@@ -133,7 +133,7 @@ def reject_draft(
 
 @router.delete("/drafts/rejected")
 def cleanup_rejected(
-    book_id: Optional[str] = None,
+    book_id: str | None = None,
     current_user: User = Depends(get_current_user),
     db: str = Depends(get_db),
 ):

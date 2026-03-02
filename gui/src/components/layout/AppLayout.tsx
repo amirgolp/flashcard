@@ -1,12 +1,12 @@
-import { useState } from 'react';
-import Box from '@mui/material/Box';
-import Toolbar from '@mui/material/Toolbar';
-import { Outlet } from '@tanstack/react-router';
-import AppBarHeader from './AppBarHeader';
-import Sidebar, { DRAWER_WIDTH } from './Sidebar';
+import { useState } from 'react'
+import Box from '@mui/material/Box'
+import Toolbar from '@mui/material/Toolbar'
+import { Outlet } from '@tanstack/react-router'
+import AppBarHeader from './AppBarHeader'
+import Sidebar, { DRAWER_WIDTH } from './Sidebar'
 
 export default function AppLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -25,5 +25,5 @@ export default function AppLayout() {
         <Outlet />
       </Box>
     </Box>
-  );
+  )
 }

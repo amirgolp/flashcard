@@ -1,10 +1,10 @@
-import type { ReactNode } from 'react';
-import { Box, Typography } from '@mui/material';
+import type { ReactNode } from 'react'
+import { Box, Typography } from '@mui/material'
 
 interface PageTitleProps {
-  title: string;
-  subtitle?: string;
-  action?: ReactNode;
+  title: string
+  subtitle?: string
+  action?: ReactNode
 }
 
 export default function PageTitle({ title, subtitle, action }: PageTitleProps) {
@@ -29,11 +29,7 @@ export default function PageTitle({ title, subtitle, action }: PageTitleProps) {
         )}
       </Box>
 
-      {action && (
-        <Box sx={{ flexShrink: 0 }}>
-          {action}
-        </Box>
-      )}
+      {action && <Box sx={{ flexShrink: 0 }}>{action}</Box>}
     </Box>
-  );
+  )
 }

@@ -241,7 +241,7 @@ class AppDriveStorageAdapter(StorageAdapter):
         cls._instance = cls(key_path)
         return cls._instance
 
-    def _get_or_create_folder(self, folder_name: str, parent_id: Optional[str] = None) -> str:
+    def _get_or_create_folder(self, folder_name: str, parent_id: str | None = None) -> str:
         cache_key = f"{parent_id}:{folder_name}"
         if cache_key in self._folder_cache:
             return self._folder_cache[cache_key]

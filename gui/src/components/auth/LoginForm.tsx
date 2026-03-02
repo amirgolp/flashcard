@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react'
 import {
   Paper,
   Stack,
@@ -7,43 +7,48 @@ import {
   Alert,
   Typography,
   Link as MuiLink,
-} from '@mui/material';
-import { useNavigate } from '@tanstack/react-router';
-import { useAuth } from '../../context/AuthContext';
+} from '@mui/material'
+import { useNavigate } from '@tanstack/react-router'
+import { useAuth } from '../../context/AuthContext'
 
 export default function LoginForm() {
-  const { login } = useAuth();
-  const navigate = useNavigate();
+  const { login } = useAuth()
+  const navigate = useNavigate()
 
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
 
     try {
-      await login(username, password);
-      navigate({ to: '/dashboard' });
+      await login(username, password)
+      navigate({ to: '/dashboard' })
     } catch (err: unknown) {
       if (err instanceof Error) {
-        setError(err.message);
+        setError(err.message)
       } else {
-        setError('Login failed. Please check your credentials and try again.');
+        setError('Login failed. Please check your credentials and try again.')
       }
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
       <form onSubmit={handleSubmit} noValidate>
         <Stack spacing={3}>
-          <Typography variant="h5" component="h1" textAlign="center" fontWeight={600}>
+          <Typography
+            variant="h5"
+            component="h1"
+            textAlign="center"
+            fontWeight={600}
+          >
             Log In
           </Typography>
 
@@ -100,5 +105,5 @@ export default function LoginForm() {
         </Stack>
       </form>
     </Paper>
-  );
+  )
 }

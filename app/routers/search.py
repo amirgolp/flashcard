@@ -37,7 +37,7 @@ def get_current_user(
 @router.get("/cards", response_model=schemas.SearchResponse)
 def search_cards(
     query: str,
-    cursor: Optional[str] = None,
+    cursor: str | None = None,
     limit: int = 10,
     current_user: User = Depends(get_current_user),
     db: str = Depends(get_db),

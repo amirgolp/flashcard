@@ -1,59 +1,104 @@
-import { useState } from 'react';
-import Box from '@mui/material/Box';
-import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
-import Paper from '@mui/material/Paper';
-import Grid from '@mui/material/Grid';
-import Typography from '@mui/material/Typography';
-import IconButton from '@mui/material/IconButton';
-import Autocomplete from '@mui/material/Autocomplete';
-import Chip from '@mui/material/Chip';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import ToggleButton from '@mui/material/ToggleButton';
-import Divider from '@mui/material/Divider';
-import AddIcon from '@mui/icons-material/Add';
-import DeleteIcon from '@mui/icons-material/Delete';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import Stack from '@mui/material/Stack';
-import Tooltip from '@mui/material/Tooltip';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import type { CardCreate, HardnessLevel, ExampleSentence } from '../../types';
+import { useState } from 'react'
+import Box from '@mui/material/Box'
+import TextField from '@mui/material/TextField'
+import Button from '@mui/material/Button'
+import Paper from '@mui/material/Paper'
+import Grid from '@mui/material/Grid'
+import Typography from '@mui/material/Typography'
+import IconButton from '@mui/material/IconButton'
+import Autocomplete from '@mui/material/Autocomplete'
+import Chip from '@mui/material/Chip'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import ToggleButton from '@mui/material/ToggleButton'
+import AddIcon from '@mui/icons-material/Add'
+import DeleteIcon from '@mui/icons-material/Delete'
+import Card from '@mui/material/Card'
+import CardContent from '@mui/material/CardContent'
+import Stack from '@mui/material/Stack'
+import Tooltip from '@mui/material/Tooltip'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
+import { useQuery } from '@tanstack/react-query'
+import { listTemplates } from '../../api/templates'
+import type {
+  CardCreate,
+  HardnessLevel,
+  ExampleSentence,
+  TemplateResponse,
+} from '../../types'
 
 interface CardFormProps {
-  initialValues?: Partial<CardCreate>;
-  onSubmit: (data: CardCreate) => void;
-  isLoading: boolean;
-  submitLabel: string;
+  initialValues?: Partial<CardCreate>
+  onSubmit: (data: CardCreate) => void
+  isLoading: boolean
+  submitLabel: string
 }
 
-const SECTION_SPACING = 3;
+const SECTION_SPACING = 3
 
-export default function CardForm({ initialValues, onSubmit, isLoading, submitLabel }: CardFormProps) {
-  const [front, setFront] = useState(initialValues?.front ?? '');
-  const [back, setBack] = useState(initialValues?.back ?? '');
-  const [partOfSpeech, setPartOfSpeech] = useState(initialValues?.part_of_speech ?? '');
-  const [gender, setGender] = useState(initialValues?.gender ?? '');
-  const [pluralForm, setPluralForm] = useState(initialValues?.plural_form ?? '');
-  const [pronunciation, setPronunciation] = useState(initialValues?.pronunciation ?? '');
-  const [notes, setNotes] = useState(initialValues?.notes ?? '');
-  const [hardness, setHardness] = useState<HardnessLevel>(initialValues?.hardness_level ?? 'medium');
+export default function CardForm({
+  initialValues,
+  onSubmit,
+  isLoading,
+  submitLabel,
+}: CardFormProps) {
+  const [front, setFront] = useState(initialValues?.front ?? '')
+  const [back, setBack] = useState(initialValues?.back ?? '')
+  const [partOfSpeech, setPartOfSpeech] = useState(
+    initialValues?.part_of_speech ?? '',
+  )
+  const [gender, setGender] = useState(initialValues?.gender ?? '')
+  const [pluralForm, setPluralForm] = useState(initialValues?.plural_form ?? '')
+  const [pronunciation, setPronunciation] = useState(
+    initialValues?.pronunciation ?? '',
+  )
+  const [notes, setNotes] = useState(initialValues?.notes ?? '')
+  const [hardness, setHardness] = useState<HardnessLevel>(
+    initialValues?.hardness_level ?? 'medium',
+  )
   const [examples, setExamples] = useState<ExampleSentence[]>(
-    initialValues?.examples ?? [{ sentence: '', translation: '' }]
-  );
-  const [synonyms, setSynonyms] = useState<string[]>(initialValues?.synonyms ?? []);
-  const [antonyms, setAntonyms] = useState<string[]>(initialValues?.antonyms ?? []);
-  const [tags, setTags] = useState<string[]>(initialValues?.tags ?? []);
+    initialValues?.examples ?? [{ sentence: '', translation: '' }],
+  )
+  const [synonyms, setSynonyms] = useState<string[]>(
+    initialValues?.synonyms ?? [],
+  )
+  const [antonyms, setAntonyms] = useState<string[]>(
+    initialValues?.antonyms ?? [],
+  )
+  const [tags, setTags] = useState<string[]>(initialValues?.tags ?? [])
+  const [templateId, setTemplateId] = useState<string | null>(
+    initialValues?.template_id ?? null,
+  )
+  const [customFields, setCustomFields] = useState<Record<string, any>>(
+    initialValues?.custom_fields ?? {},
+  )
 
-  const handleExampleChange = (index: number, field: keyof ExampleSentence, value: string) => {
-    const updated = [...examples];
-    updated[index] = { ...updated[index], [field]: value };
-    setExamples(updated);
-  };
+  const { data: templates, isLoading: templatesLoading } = useQuery({
+    queryKey: ['templates'],
+    queryFn: () => listTemplates(0, 50, true),
+  })
+
+  const selectedTemplate =
+    templates?.find((t: TemplateResponse) => t.id === templateId) ?? null
+
+  const handleCustomFieldChange = (key: string, value: string) => {
+    setCustomFields((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleExampleChange = (
+    index: number,
+    field: keyof ExampleSentence,
+    value: string,
+  ) => {
+    const updated = [...examples]
+    updated[index] = { ...updated[index], [field]: value }
+    setExamples(updated)
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const filteredExamples = examples.filter((ex) => ex.sentence.trim() || ex.translation.trim());
+    e.preventDefault()
+    const filteredExamples = examples.filter(
+      (ex) => ex.sentence.trim() || ex.translation.trim(),
+    )
     onSubmit({
       front,
       back,
@@ -63,20 +108,77 @@ export default function CardForm({ initialValues, onSubmit, isLoading, submitLab
       pronunciation: pronunciation || undefined,
       notes: notes || undefined,
       hardness_level: hardness,
+      template_id: templateId || undefined,
+      custom_fields:
+        Object.keys(customFields).length > 0 ? customFields : undefined,
       examples: filteredExamples.length > 0 ? filteredExamples : undefined,
       synonyms: synonyms.length > 0 ? synonyms : undefined,
       antonyms: antonyms.length > 0 ? antonyms : undefined,
       tags: tags.length > 0 ? tags : undefined,
-    });
-  };
+    })
+  }
 
   return (
     <Box component="form" onSubmit={handleSubmit}>
       <Stack spacing={SECTION_SPACING}>
+        <Card variant="outlined">
+          <CardContent>
+            <Typography variant="h6" gutterBottom color="primary">
+              Template Configuration
+            </Typography>
+            <Autocomplete
+              options={templates ?? []}
+              loading={templatesLoading}
+              getOptionLabel={(option: TemplateResponse) => option.name}
+              value={selectedTemplate}
+              onChange={(_, value) => setTemplateId(value?.id ?? null)}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Select Template"
+                  placeholder="Optional: Choose a template for custom fields"
+                />
+              )}
+            />
+          </CardContent>
+        </Card>
+
+        {selectedTemplate && selectedTemplate.fields.length > 0 && (
+          <Card variant="outlined">
+            <CardContent>
+              <Typography variant="h6" gutterBottom color="primary">
+                Custom Fields
+              </Typography>
+              <Grid container spacing={3}>
+                {selectedTemplate.fields.map((field) => (
+                  <Grid item xs={12} key={field.name}>
+                    <TextField
+                      fullWidth
+                      required={field.required}
+                      label={field.label}
+                      value={customFields[field.name] || ''}
+                      onChange={(e) =>
+                        handleCustomFieldChange(field.name, e.target.value)
+                      }
+                      multiline={field.type === 'textarea'}
+                      minRows={field.type === 'textarea' ? 3 : 1}
+                      helperText={field.description}
+                      variant="outlined"
+                    />
+                  </Grid>
+                ))}
+              </Grid>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Core Information */}
         <Card variant="outlined">
           <CardContent>
-            <Typography variant="h6" gutterBottom color="primary">Core Information</Typography>
+            <Typography variant="h6" gutterBottom color="primary">
+              Core Information
+            </Typography>
             <Grid container spacing={3}>
               <Grid item xs={12}>
                 <TextField
@@ -106,15 +208,31 @@ export default function CardForm({ initialValues, onSubmit, isLoading, submitLab
               <Grid item xs={12} md={6}>
                 <Autocomplete
                   freeSolo
-                  options={["noun", "verb", "adjective", "adverb", "preposition", "conjunction", "interjection"]}
+                  options={[
+                    'noun',
+                    'verb',
+                    'adjective',
+                    'adverb',
+                    'preposition',
+                    'conjunction',
+                    'interjection',
+                  ]}
                   value={partOfSpeech}
-                  onChange={(_, v) => setPartOfSpeech(v || "")}
-                  renderInput={(params) => <TextField {...params} label="Part of Speech" placeholder="e.g., noun" />}
+                  onChange={(_, v) => setPartOfSpeech(v || '')}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Part of Speech"
+                      placeholder="e.g., noun"
+                    />
+                  )}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
                 <Box display="flex" alignItems="center" gap={2}>
-                  <Typography variant="body2" color="text.secondary">Difficulty:</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Difficulty:
+                  </Typography>
                   <ToggleButtonGroup
                     value={hardness}
                     exclusive
@@ -122,9 +240,15 @@ export default function CardForm({ initialValues, onSubmit, isLoading, submitLab
                     size="small"
                     aria-label="hardness level"
                   >
-                    <ToggleButton value="easy" color="success">Easy</ToggleButton>
-                    <ToggleButton value="medium" color="warning">Medium</ToggleButton>
-                    <ToggleButton value="hard" color="error">Hard</ToggleButton>
+                    <ToggleButton value="easy" color="success">
+                      Easy
+                    </ToggleButton>
+                    <ToggleButton value="medium" color="warning">
+                      Medium
+                    </ToggleButton>
+                    <ToggleButton value="hard" color="error">
+                      Hard
+                    </ToggleButton>
                   </ToggleButtonGroup>
                 </Box>
               </Grid>
@@ -135,15 +259,23 @@ export default function CardForm({ initialValues, onSubmit, isLoading, submitLab
         {/* Linguistic Details */}
         <Card variant="outlined">
           <CardContent>
-            <Typography variant="h6" gutterBottom color="primary">Linguistic Details</Typography>
+            <Typography variant="h6" gutterBottom color="primary">
+              Linguistic Details
+            </Typography>
             <Grid container spacing={3}>
               <Grid item xs={12} md={4}>
                 <Autocomplete
                   freeSolo
-                  options={["masculine", "feminine", "neuter"]}
+                  options={['masculine', 'feminine', 'neuter']}
                   value={gender}
-                  onChange={(_, v) => setGender(v || "")}
-                  renderInput={(params) => <TextField {...params} label="Gender" placeholder="e.g., masculine" />}
+                  onChange={(_, v) => setGender(v || '')}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Gender"
+                      placeholder="e.g., masculine"
+                    />
+                  )}
                 />
               </Grid>
               <Grid item xs={12} md={4}>
@@ -167,7 +299,7 @@ export default function CardForm({ initialValues, onSubmit, isLoading, submitLab
                       <Tooltip title="International Phonetic Alphabet representation">
                         <HelpOutlineIcon fontSize="small" color="action" />
                       </Tooltip>
-                    )
+                    ),
                   }}
                 />
               </Grid>
@@ -178,11 +310,20 @@ export default function CardForm({ initialValues, onSubmit, isLoading, submitLab
         {/* Examples */}
         <Card variant="outlined">
           <CardContent>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h6" color="primary">Examples</Typography>
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              mb={2}
+            >
+              <Typography variant="h6" color="primary">
+                Examples
+              </Typography>
               <Button
                 startIcon={<AddIcon />}
-                onClick={() => setExamples([...examples, { sentence: '', translation: '' }])}
+                onClick={() =>
+                  setExamples([...examples, { sentence: '', translation: '' }])
+                }
                 disabled={examples.length >= 5}
                 size="small"
               >
@@ -191,7 +332,12 @@ export default function CardForm({ initialValues, onSubmit, isLoading, submitLab
             </Box>
             <Stack spacing={2}>
               {examples.map((ex, i) => (
-                <Paper key={i} elevation={0} variant="outlined" sx={{ p: 2, bgcolor: 'background.default' }}>
+                <Paper
+                  key={i}
+                  elevation={0}
+                  variant="outlined"
+                  sx={{ p: 2, bgcolor: 'background.default' }}
+                >
                   <Box display="flex" alignItems="flex-start" gap={2}>
                     <Grid container spacing={2} flex={1}>
                       <Grid item xs={12} md={6}>
@@ -199,7 +345,9 @@ export default function CardForm({ initialValues, onSubmit, isLoading, submitLab
                           fullWidth
                           label={`Sentence ${i + 1}`}
                           value={ex.sentence}
-                          onChange={(e) => handleExampleChange(i, 'sentence', e.target.value)}
+                          onChange={(e) =>
+                            handleExampleChange(i, 'sentence', e.target.value)
+                          }
                           size="small"
                           placeholder="Example sentence using the word"
                         />
@@ -209,14 +357,22 @@ export default function CardForm({ initialValues, onSubmit, isLoading, submitLab
                           fullWidth
                           label={`Translation ${i + 1}`}
                           value={ex.translation}
-                          onChange={(e) => handleExampleChange(i, 'translation', e.target.value)}
+                          onChange={(e) =>
+                            handleExampleChange(
+                              i,
+                              'translation',
+                              e.target.value,
+                            )
+                          }
                           size="small"
                           placeholder="Translation of the example"
                         />
                       </Grid>
                     </Grid>
                     <IconButton
-                      onClick={() => setExamples(examples.filter((_, idx) => idx !== i))}
+                      onClick={() =>
+                        setExamples(examples.filter((_, idx) => idx !== i))
+                      }
                       disabled={examples.length <= 1}
                       color="error"
                       size="small"
@@ -233,7 +389,9 @@ export default function CardForm({ initialValues, onSubmit, isLoading, submitLab
         {/* Relationships */}
         <Card variant="outlined">
           <CardContent>
-            <Typography variant="h6" gutterBottom color="primary">Relationships</Typography>
+            <Typography variant="h6" gutterBottom color="primary">
+              Relationships
+            </Typography>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <Autocomplete
@@ -244,11 +402,22 @@ export default function CardForm({ initialValues, onSubmit, isLoading, submitLab
                   onChange={(_, v) => setSynonyms(v)}
                   renderTags={(value, getTagProps) =>
                     value.map((option, index) => (
-                      <Chip variant="outlined" label={option} size="small" {...getTagProps({ index })} key={index} />
+                      <Chip
+                        variant="outlined"
+                        label={option}
+                        size="small"
+                        {...getTagProps({ index })}
+                        key={index}
+                      />
                     ))
                   }
                   renderInput={(params) => (
-                    <TextField {...params} label="Synonyms" placeholder="Type and press Enter" helperText="Words with similar meanings" />
+                    <TextField
+                      {...params}
+                      label="Synonyms"
+                      placeholder="Type and press Enter"
+                      helperText="Words with similar meanings"
+                    />
                   )}
                 />
               </Grid>
@@ -261,11 +430,22 @@ export default function CardForm({ initialValues, onSubmit, isLoading, submitLab
                   onChange={(_, v) => setAntonyms(v)}
                   renderTags={(value, getTagProps) =>
                     value.map((option, index) => (
-                      <Chip variant="outlined" label={option} size="small" {...getTagProps({ index })} key={index} />
+                      <Chip
+                        variant="outlined"
+                        label={option}
+                        size="small"
+                        {...getTagProps({ index })}
+                        key={index}
+                      />
                     ))
                   }
                   renderInput={(params) => (
-                    <TextField {...params} label="Antonyms" placeholder="Type and press Enter" helperText="Words with opposite meanings" />
+                    <TextField
+                      {...params}
+                      label="Antonyms"
+                      placeholder="Type and press Enter"
+                      helperText="Words with opposite meanings"
+                    />
                   )}
                 />
               </Grid>
@@ -276,7 +456,9 @@ export default function CardForm({ initialValues, onSubmit, isLoading, submitLab
         {/* Metadata */}
         <Card variant="outlined">
           <CardContent>
-            <Typography variant="h6" gutterBottom color="primary">Additional Notes & Tags</Typography>
+            <Typography variant="h6" gutterBottom color="primary">
+              Additional Notes & Tags
+            </Typography>
             <Grid container spacing={3}>
               <Grid item xs={12}>
                 <Autocomplete
@@ -287,11 +469,21 @@ export default function CardForm({ initialValues, onSubmit, isLoading, submitLab
                   onChange={(_, v) => setTags(v)}
                   renderTags={(value, getTagProps) =>
                     value.map((option, index) => (
-                      <Chip variant="outlined" label={option} size="small" {...getTagProps({ index })} key={index} />
+                      <Chip
+                        variant="outlined"
+                        label={option}
+                        size="small"
+                        {...getTagProps({ index })}
+                        key={index}
+                      />
                     ))
                   }
                   renderInput={(params) => (
-                    <TextField {...params} label="Tags" placeholder="Type and press Enter" />
+                    <TextField
+                      {...params}
+                      label="Tags"
+                      placeholder="Type and press Enter"
+                    />
                   )}
                 />
               </Grid>
@@ -323,5 +515,5 @@ export default function CardForm({ initialValues, onSubmit, isLoading, submitLab
         </Box>
       </Stack>
     </Box>
-  );
+  )
 }

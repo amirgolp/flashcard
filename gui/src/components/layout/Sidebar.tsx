@@ -1,37 +1,39 @@
-import Drawer from '@mui/material/Drawer';
-import List from '@mui/material/List';
-import ListItemButton from '@mui/material/ListItemButton';
-import ListItemIcon from '@mui/material/ListItemIcon';
-import ListItemText from '@mui/material/ListItemText';
-import Toolbar from '@mui/material/Toolbar';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import StyleIcon from '@mui/icons-material/Style';
-import FolderIcon from '@mui/icons-material/Folder';
-import MenuBookIcon from '@mui/icons-material/MenuBook';
-import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
-import SettingsIcon from '@mui/icons-material/Settings';
-import { useNavigate, useRouterState } from '@tanstack/react-router';
+import Drawer from '@mui/material/Drawer'
+import List from '@mui/material/List'
+import ListItemButton from '@mui/material/ListItemButton'
+import ListItemIcon from '@mui/material/ListItemIcon'
+import ListItemText from '@mui/material/ListItemText'
+import Toolbar from '@mui/material/Toolbar'
+import DashboardIcon from '@mui/icons-material/Dashboard'
+import StyleIcon from '@mui/icons-material/Style'
+import FolderIcon from '@mui/icons-material/Folder'
+import MenuBookIcon from '@mui/icons-material/MenuBook'
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh'
+import SettingsIcon from '@mui/icons-material/Settings'
+import ViewQuiltIcon from '@mui/icons-material/ViewQuilt'
+import { useNavigate, useRouterState } from '@tanstack/react-router'
 
-const DRAWER_WIDTH = 240;
+const DRAWER_WIDTH = 240
 
 const navItems = [
   { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
   { label: 'Cards', path: '/cards', icon: <StyleIcon /> },
   { label: 'Decks', path: '/decks', icon: <FolderIcon /> },
   { label: 'Books', path: '/books', icon: <MenuBookIcon /> },
+  { label: 'Templates', path: '/templates', icon: <ViewQuiltIcon /> },
   { label: 'Generation', path: '/generation', icon: <AutoFixHighIcon /> },
   { label: 'Settings', path: '/settings/storage', icon: <SettingsIcon /> },
-];
+]
 
 interface SidebarProps {
-  open: boolean;
-  onClose: () => void;
+  open: boolean
+  onClose: () => void
 }
 
 export default function Sidebar({ open, onClose }: SidebarProps) {
-  const navigate = useNavigate();
-  const routerState = useRouterState();
-  const currentPath = routerState.location.pathname;
+  const navigate = useNavigate()
+  const routerState = useRouterState()
+  const currentPath = routerState.location.pathname
 
   const drawerContent = (
     <>
@@ -42,8 +44,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             key={item.path}
             selected={currentPath.startsWith(item.path)}
             onClick={() => {
-              navigate({ to: item.path });
-              onClose();
+              navigate({ to: item.path })
+              onClose()
             }}
           >
             <ListItemIcon>{item.icon}</ListItemIcon>
@@ -52,7 +54,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         ))}
       </List>
     </>
-  );
+  )
 
   return (
     <>
@@ -71,14 +73,17 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         variant="permanent"
         sx={{
           display: { xs: 'none', md: 'block' },
-          '& .MuiDrawer-paper': { width: DRAWER_WIDTH, boxSizing: 'border-box' },
+          '& .MuiDrawer-paper': {
+            width: DRAWER_WIDTH,
+            boxSizing: 'border-box',
+          },
         }}
         open
       >
         {drawerContent}
       </Drawer>
     </>
-  );
+  )
 }
 
-export { DRAWER_WIDTH };
+export { DRAWER_WIDTH }

@@ -1,10 +1,10 @@
-import Grid from '@mui/material/Grid2';
-import CardListItem from './CardListItem';
-import type { Card } from '../../types';
+import Grid from '@mui/material/Grid2'
+import CardListItem from './CardListItem'
+import type { Card } from '../../types'
 
 interface CardGridProps {
-  cards: Card[];
-  onCardClick: (id: string) => void;
+  cards: Card[]
+  onCardClick: (id: string) => void
 }
 
 export default function CardGrid({ cards, onCardClick }: CardGridProps) {
@@ -16,5 +16,5 @@ export default function CardGrid({ cards, onCardClick }: CardGridProps) {
         </Grid>
       ))}
     </Grid>
-  );
+  )
 }

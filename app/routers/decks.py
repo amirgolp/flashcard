@@ -81,7 +81,7 @@ def delete_deck(
     return {"detail": "Deck deleted successfully"}
 
 
-@router.get("/", response_model=List[schemas.Deck])
+@router.get("/", response_model=list[schemas.Deck])
 def list_decks(
     skip: int = 0,
     limit: int = 10,

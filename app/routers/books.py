@@ -18,8 +18,8 @@ MAX_PDF_SIZE_FREE = 10 * 1024 * 1024  # 10 MB for free tier
 async def upload_book(
     file: UploadFile = File(...),
     title: str = Form(...),
-    target_language: Optional[str] = Form(None),
-    native_language: Optional[str] = Form(None),
+    target_language: str | None = Form(None),
+    native_language: str | None = Form(None),
     current_user: User = Depends(get_current_user),
     db: str = Depends(get_db),
 ):
@@ -143,7 +143,7 @@ async def upload_book(
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
-@router.get("/", response_model=List[schemas.BookResponse])
+@router.get("/", response_model=list[schemas.BookResponse])
 def list_books(
     skip: int = 0,
     limit: int = 100,

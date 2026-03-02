@@ -1,71 +1,90 @@
-import { useState } from 'react';
-import Box from '@mui/material/Box';
-import Paper from '@mui/material/Paper';
-import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
-import Autocomplete from '@mui/material/Autocomplete';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import ToggleButton from '@mui/material/ToggleButton';
-import Typography from '@mui/material/Typography';
-import Grid from '@mui/material/Grid';
-import Alert from '@mui/material/Alert';
-import CircularProgress from '@mui/material/CircularProgress';
-import LinearProgress from '@mui/material/LinearProgress';
-import { useBooks } from '../../hooks/useBooks';
-import { useGenerateNextBatch, useGenerateFromRange } from '../../hooks/useGeneration';
-import type { BookResponse, GenerationResponse } from '../../types';
+import { useState } from 'react'
+import Box from '@mui/material/Box'
+import Paper from '@mui/material/Paper'
+import TextField from '@mui/material/TextField'
+import Button from '@mui/material/Button'
+import Autocomplete from '@mui/material/Autocomplete'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import ToggleButton from '@mui/material/ToggleButton'
+import Typography from '@mui/material/Typography'
+import Grid from '@mui/material/Grid'
+import Alert from '@mui/material/Alert'
+import CircularProgress from '@mui/material/CircularProgress'
+import LinearProgress from '@mui/material/LinearProgress'
+import { useBooks } from '../../hooks/useBooks'
+import {
+  useGenerateNextBatch,
+  useGenerateFromRange,
+} from '../../hooks/useGeneration'
+import type { BookResponse, GenerationResponse } from '../../types'
 
-type GenerationMode = 'next-batch' | 'page-range';
+type GenerationMode = 'next-batch' | 'page-range'
 
 interface GenerateFormProps {
-  selectedBookId: string | null;
-  onBookChange: (bookId: string | null) => void;
+  selectedBookId: string | null
+  onBookChange: (bookId: string | null) => void
 }
 
-export default function GenerateForm({ selectedBookId, onBookChange }: GenerateFormProps) {
-  const { data: books, isLoading: booksLoading } = useBooks(0, 100);
+export default function GenerateForm({
+  selectedBookId,
+  onBookChange,
+}: GenerateFormProps) {
+  const { data: books, isLoading: booksLoading } = useBooks(0, 100)
 
-  const [mode, setMode] = useState<GenerationMode>('next-batch');
-  const [numPages, setNumPages] = useState(5);
-  const [numCards, setNumCards] = useState(10);
-  const [startPage, setStartPage] = useState(1);
-  const [endPage, setEndPage] = useState(10);
-  const [result, setResult] = useState<GenerationResponse | null>(null);
+  const [mode, setMode] = useState<GenerationMode>('next-batch')
+  const [numPages, setNumPages] = useState(5)
+  const [numCards, setNumCards] = useState(10)
+  const [startPage, setStartPage] = useState(1)
+  const [endPage, setEndPage] = useState(10)
+  const [result, setResult] = useState<GenerationResponse | null>(null)
 
-  const generateNextBatch = useGenerateNextBatch();
-  const generateFromRange = useGenerateFromRange();
+  const generateNextBatch = useGenerateNextBatch()
+  const generateFromRange = useGenerateFromRange()
 
-  const isGenerating = generateNextBatch.isPending || generateFromRange.isPending;
-  const error = generateNextBatch.error || generateFromRange.error;
+  const isGenerating =
+    generateNextBatch.isPending || generateFromRange.isPending
+  const error = generateNextBatch.error || generateFromRange.error
 
-  const selectedBook = books?.find((b: BookResponse) => b.id === selectedBookId) ?? null;
+  const selectedBook =
+    books?.find((b: BookResponse) => b.id === selectedBookId) ?? null
 
-  const handleModeChange = (_: React.MouseEvent<HTMLElement>, newMode: GenerationMode | null) => {
-    if (newMode) setMode(newMode);
-  };
+  const handleModeChange = (
+    _: React.MouseEvent<HTMLElement>,
+    newMode: GenerationMode | null,
+  ) => {
+    if (newMode) setMode(newMode)
+  }
 
-  const handleBookChange = (_: React.SyntheticEvent, value: BookResponse | null) => {
-    onBookChange(value?.id ?? null);
-    setResult(null);
-  };
+  const handleBookChange = (
+    _: React.SyntheticEvent,
+    value: BookResponse | null,
+  ) => {
+    onBookChange(value?.id ?? null)
+    setResult(null)
+  }
 
   const handleGenerate = () => {
-    if (!selectedBookId) return;
+    if (!selectedBookId) return
 
-    setResult(null);
+    setResult(null)
 
     if (mode === 'next-batch') {
       generateNextBatch.mutate(
         { book_id: selectedBookId, num_pages: numPages, num_cards: numCards },
         { onSuccess: (data) => setResult(data) },
-      );
+      )
     } else {
       generateFromRange.mutate(
-        { book_id: selectedBookId, start_page: startPage, end_page: endPage, num_cards: numCards },
+        {
+          book_id: selectedBookId,
+          start_page: startPage,
+          end_page: endPage,
+          num_cards: numCards,
+        },
         { onSuccess: (data) => setResult(data) },
-      );
+      )
     }
-  };
+  }
 
   return (
     <Paper sx={{ p: 3 }}>
@@ -99,9 +118,15 @@ export default function GenerateForm({ selectedBookId, onBookChange }: GenerateF
             )}
           />
           {selectedBook && (
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ mt: 0.5, display: 'block' }}
+            >
               {selectedBook.total_pages} pages
-              {selectedBook.target_language ? ` \u00B7 ${selectedBook.target_language}` : ''}
+              {selectedBook.target_language
+                ? ` \u00B7 ${selectedBook.target_language}`
+                : ''}
             </Typography>
           )}
         </Grid>
@@ -125,7 +150,7 @@ export default function GenerateForm({ selectedBookId, onBookChange }: GenerateF
                   '& .MuiToggleButton-root': {
                     flex: 1,
                     py: 1,
-                  }
+                  },
                 }}
               >
                 <ToggleButton value="next-batch">Next Batch</ToggleButton>
@@ -144,8 +169,12 @@ export default function GenerateForm({ selectedBookId, onBookChange }: GenerateF
                 type="number"
                 label="Number of Pages"
                 value={numPages}
-                onChange={(e) => setNumPages(Math.max(1, parseInt(e.target.value) || 1))}
-                slotProps={{ htmlInput: { min: 1, max: selectedBook?.total_pages ?? 100 } }}
+                onChange={(e) =>
+                  setNumPages(Math.max(1, parseInt(e.target.value) || 1))
+                }
+                slotProps={{
+                  htmlInput: { min: 1, max: selectedBook?.total_pages ?? 100 },
+                }}
                 helperText="Pages to process from current position"
               />
             </Grid>
@@ -155,7 +184,9 @@ export default function GenerateForm({ selectedBookId, onBookChange }: GenerateF
                 type="number"
                 label="Number of Cards"
                 value={numCards}
-                onChange={(e) => setNumCards(Math.max(1, parseInt(e.target.value) || 1))}
+                onChange={(e) =>
+                  setNumCards(Math.max(1, parseInt(e.target.value) || 1))
+                }
                 slotProps={{ htmlInput: { min: 1, max: 50 } }}
                 helperText="Target number of cards to generate"
               />
@@ -169,8 +200,12 @@ export default function GenerateForm({ selectedBookId, onBookChange }: GenerateF
                 type="number"
                 label="Start Page"
                 value={startPage}
-                onChange={(e) => setStartPage(Math.max(1, parseInt(e.target.value) || 1))}
-                slotProps={{ htmlInput: { min: 1, max: selectedBook?.total_pages ?? 9999 } }}
+                onChange={(e) =>
+                  setStartPage(Math.max(1, parseInt(e.target.value) || 1))
+                }
+                slotProps={{
+                  htmlInput: { min: 1, max: selectedBook?.total_pages ?? 9999 },
+                }}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 4 }}>
@@ -179,8 +214,15 @@ export default function GenerateForm({ selectedBookId, onBookChange }: GenerateF
                 type="number"
                 label="End Page"
                 value={endPage}
-                onChange={(e) => setEndPage(Math.max(1, parseInt(e.target.value) || 1))}
-                slotProps={{ htmlInput: { min: startPage, max: selectedBook?.total_pages ?? 9999 } }}
+                onChange={(e) =>
+                  setEndPage(Math.max(1, parseInt(e.target.value) || 1))
+                }
+                slotProps={{
+                  htmlInput: {
+                    min: startPage,
+                    max: selectedBook?.total_pages ?? 9999,
+                  },
+                }}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 4 }}>
@@ -189,7 +231,9 @@ export default function GenerateForm({ selectedBookId, onBookChange }: GenerateF
                 type="number"
                 label="Number of Cards"
                 value={numCards}
-                onChange={(e) => setNumCards(Math.max(1, parseInt(e.target.value) || 1))}
+                onChange={(e) =>
+                  setNumCards(Math.max(1, parseInt(e.target.value) || 1))
+                }
                 slotProps={{ htmlInput: { min: 1, max: 50 } }}
               />
             </Grid>
@@ -221,7 +265,11 @@ export default function GenerateForm({ selectedBookId, onBookChange }: GenerateF
           <Grid size={{ xs: 12 }}>
             <Box>
               <LinearProgress />
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mt: 1, display: 'block' }}
+              >
                 This may take 10-30 seconds depending on the number of pages...
               </Typography>
             </Box>
@@ -232,7 +280,9 @@ export default function GenerateForm({ selectedBookId, onBookChange }: GenerateF
         {error && (
           <Grid size={{ xs: 12 }}>
             <Alert severity="error">
-              {error instanceof Error ? error.message : 'Generation failed. Please try again.'}
+              {error instanceof Error
+                ? error.message
+                : 'Generation failed. Please try again.'}
             </Alert>
           </Grid>
         )}
@@ -245,7 +295,8 @@ export default function GenerateForm({ selectedBookId, onBookChange }: GenerateF
                 {result.message}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Generated {result.drafts.length} draft card{result.drafts.length !== 1 ? 's' : ''} from pages{' '}
+                Generated {result.drafts.length} draft card
+                {result.drafts.length !== 1 ? 's' : ''} from pages{' '}
                 {result.pages_processed.start}\u2013{result.pages_processed.end}
               </Typography>
             </Alert>
@@ -253,5 +304,5 @@ export default function GenerateForm({ selectedBookId, onBookChange }: GenerateF
         )}
       </Grid>
     </Paper>
-  );
+  )
 }
