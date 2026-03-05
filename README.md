@@ -15,11 +15,16 @@ The backend is located in the `app` directory.
    cp app/.env.example app/.env
    ```
    Configure your MongoDB connection inside `app/.env`:
-   - `MONGODB_DB`
-   - `MONGODB_USER`
-   - `MONGODB_PASSWORD`
-   - `MONGODB_HOST` (Set this to your MongoDB Atlas connection string)
+   - `LOCAL_MONGODB_URI` (Defaults to a local connection: `mongodb://admin:secretpassword@localhost:27017/flashcard_db?authSource=admin`)
+   - `MONGODB_HOST` (Set this to your MongoDB Atlas connection string for a cloud fallback)
    
+   **Running MongoDB Locally**:
+   The backend is configured to prioritize `LOCAL_MONGODB_URI`. If you want to run a local database, simply start the included Docker container:
+   ```bash
+   docker-compose up -d
+   ```
+   If the local container isn't running or the connection fails, the backend will automatically fallback to the cloud `MONGODB_HOST`.
+
    **Other Integrations:**
    - **Google Drive Storage**: Add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` for file storage.
    - **AI Generation (Gemini)**: Add `GEMINI_API_KEY` to use the Gemini model for content generation.
@@ -57,6 +62,13 @@ The frontend is located in the `gui` directory.
    ```bash
    cd gui
    ```
+
+2. **Environment Variables**:
+   Copy the example environment file inside the `gui` directory:
+   ```bash
+   cp .env.example .env
+   ```
+   Ensure `VITE_API_URL` is set to the backend API address (e.g., `http://localhost:8000`).
 
 2. **Install dependencies**:
    ```bash
