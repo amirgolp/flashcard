@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: flashcard_mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD:-secretpassword}
+      MONGO_INITDB_DATABASE: ${MONGODB_DB:-flashcard_db}
+    #Persists MongoDB data in a named volume mongodb_data to ensure data is not lost when the container restarts.
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+#Defineing a named volume mongodb_data for persistent storage
+volumes:
+  mongodb_data:
