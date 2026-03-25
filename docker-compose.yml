@@ -1,4 +1,4 @@
-version: '3.8'
+# version: '3.8'
 
 services:
   mongodb:
@@ -10,8 +10,9 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: secretpassword
+    #Persists MongoDB data in a named volume mongodb_data to ensure data is not lost when the container restarts.
     volumes:
       - mongodb_data:/data/db
-
+#Defineing a named volume mongodb_data for persistent storage
 volumes:
   mongodb_data:
