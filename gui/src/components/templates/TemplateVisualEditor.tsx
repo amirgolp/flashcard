@@ -218,13 +218,15 @@ export default function TemplateVisualEditor({
         sx={{
           display: 'flex',
           height: '600px',
-          border: '1px solid #e0e0e0',
-          borderRadius: 2,
+          border: 1,
+          borderColor: 'divider',
+          borderRadius: 3,
           overflow: 'hidden',
+          boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(0,0,0,0.05)',
         }}
       >
         {/* Playfield Area */}
-        <Box sx={{ flexGrow: 1, bgcolor: '#eef2f6', overflow: 'hidden' }}>
+        <Box sx={{ flexGrow: 1, bgcolor: (theme) => theme.palette.mode === 'dark' ? 'background.default' : '#f8fafc', overflow: 'hidden' }}>
           <FlipCardCanvas
             isFlipped={isFlipped}
             onFlip={() => setIsFlipped(!isFlipped)}

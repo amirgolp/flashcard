@@ -7,6 +7,7 @@ import {
   Button,
   TextField,
   Box,
+  Typography,
 } from '@mui/material'
 import type {
   TemplateUpdate,
@@ -118,9 +119,11 @@ export default function TemplateFormModal({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
-      <DialogTitle>{template ? 'Edit Template' : 'New Template'}</DialogTitle>
-      <DialogContent dividers>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, my: 1 }}>
+      <DialogTitle sx={{ pt: 3, px: 4, pb: 1 }}>
+        <Typography variant="h5" color="text.primary">{template ? 'Edit Template' : 'Create New Template'}</Typography>
+      </DialogTitle>
+      <DialogContent sx={{ px: 4, pb: 4, pt: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField
               label="Template Name"

@@ -71,8 +71,9 @@ export default function FlipCardCanvas({
             flexDirection: 'column',
             p: 3,
             bgcolor: 'background.paper',
-            borderRadius: 2,
-            border: isFlipped ? '1px solid transparent' : '2px solid #1976d2',
+            borderRadius: 4,
+            border: '2px solid',
+            borderColor: isFlipped ? 'transparent' : 'primary.main',
           }}
         >
           <Box
@@ -130,10 +131,11 @@ export default function FlipCardCanvas({
             display: 'flex',
             flexDirection: 'column',
             p: 3,
-            bgcolor: '#f5f5f5',
-            borderRadius: 2,
+            bgcolor: 'background.paper',
+            borderRadius: 4,
             transform: 'rotateY(180deg)',
-            border: isFlipped ? '2px solid #9c27b0' : '1px solid transparent',
+            border: '2px solid',
+            borderColor: isFlipped ? 'secondary.main' : 'transparent',
           }}
         >
           <Box

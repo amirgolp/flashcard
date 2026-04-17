@@ -47,11 +47,12 @@ export default function SortableFieldItem({
         alignItems: 'center',
         gap: 1,
         cursor: 'pointer',
-        border: isActive ? '2px solid #1976d2' : '1px solid #e0e0e0',
-        borderRadius: 1,
+        border: isActive ? '2px solid' : '1px solid',
+        borderColor: isActive ? 'primary.main' : 'divider',
+        borderRadius: 2,
         bgcolor: 'background.paper',
         '&:hover': {
-          borderColor: isActive ? '#1976d2' : '#bdbdbd',
+          borderColor: isActive ? 'primary.main' : 'text.disabled',
         },
       }}
     >

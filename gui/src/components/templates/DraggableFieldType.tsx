@@ -1,5 +1,4 @@
 import { useDraggable } from '@dnd-kit/core'
-import { CSS } from '@dnd-kit/utilities'
 import { Box, Typography } from '@mui/material'
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator'
 
@@ -16,7 +15,7 @@ interface DraggableFieldTypeProps {
 export default function DraggableFieldType({
   template,
 }: DraggableFieldTypeProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
+  const { attributes, listeners, setNodeRef, isDragging } =
     useDraggable({
       id: `new-${template.type}`,
       data: {
@@ -47,12 +46,13 @@ export default function DraggableFieldType({
         gap: 2,
         p: 2,
         mb: 2,
-        border: '1px dashed #bdbdbd',
-        borderRadius: 1,
-        bgcolor: '#fafafa',
+        border: '1px dashed',
+        borderColor: 'divider',
+        borderRadius: 2,
+        bgcolor: 'background.paper',
         '&:hover': {
-          bgcolor: '#f0f0f0',
-          borderColor: '#9e9e9e',
+          bgcolor: 'action.hover',
+          borderColor: 'text.secondary',
         },
       }}
     >
