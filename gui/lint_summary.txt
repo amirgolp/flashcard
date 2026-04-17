@@ -1,0 +1,1 @@
+C:\Users\golpa\OneDrive\Desktop\workspace\flashcard\gui\src\components\templates\TemplateFormModal.tsx:103:17 'id' is assigned a value but never used.
