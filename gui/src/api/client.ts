@@ -21,8 +21,20 @@ apiClient.interceptors.response.use(
     }
 
     // Extract backend error message if available
-    if (error.response?.data?.detail) {
-      error.message = error.response.data.detail
+    const detail = error.response?.data?.detail
+    if (detail) {
+      if (typeof detail === 'string') {
+        error.message = detail
+      } else if (Array.isArray(detail)) {
+        error.message = detail
+          .map((d) => {
+            const loc = Array.isArray(d?.loc) ? d.loc.filter((p: unknown) => p !== 'body').join('.') : ''
+            return loc ? `${loc}: ${d?.msg ?? ''}` : (d?.msg ?? JSON.stringify(d))
+          })
+          .join('; ')
+      } else if (typeof detail === 'object') {
+        error.message = detail.msg ?? JSON.stringify(detail)
+      }
     }
 
     return Promise.reject(error)

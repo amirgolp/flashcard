@@ -6,12 +6,53 @@ services:
     container_name: flashcard_mongo_db
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "27018:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: secretpassword
     volumes:
       - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: flashcard_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./app/.env
+    environment:
+      LOCAL_MONGODB_URI: mongodb://admin:secretpassword@mongodb:27017/flashcard_db?authSource=admin
+    volumes:
+      - ./app:/code/app
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: flashcard_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    env_file:
+      - ./gui/.env
+    environment:
+      VITE_API_URL: http://localhost:8000
+    volumes:
+      - ./gui:/app
+      - /app/node_modules
+    depends_on:
+      - backend
 
 volumes:
   mongodb_data:
