@@ -2,87 +2,60 @@
 
 A full-stack flashcard learning application built with FastAPI (Python), MongoDB, and React with TypeScript, Vite, and Material-UI.
 
-## 🚀 How to Run the Project
+## 🚀 Getting Started
 
-### 1. Backend (FastAPI + MongoDB)
-The backend is located in the `app` directory.
+**Prereqs**: Python 3.11, Node 20, Docker, `uv` (optional).
 
-**Prerequisites**: Python 3.9+ and MongoDB Atlas (or a local MongoDB instance).
+### First-time setup
 
-1. **Environment Variables**:
-   Copy the example environment file inside the `app` directory to set up your credentials:
-   ```bash
-   cp app/.env.example app/.env
-   ```
-   Configure your MongoDB connection inside `app/.env`:
-   - `LOCAL_MONGODB_URI` (Defaults to a local connection: `mongodb://admin:secretpassword@localhost:27017/flashcard_db?authSource=admin`)
-   - `MONGODB_HOST` (Set this to your MongoDB Atlas connection string for a cloud fallback)
-   
-   **Running MongoDB Locally**:
-   The backend is configured to prioritize `LOCAL_MONGODB_URI`. If you want to run a local database, simply start the included Docker container:
-   ```bash
-   docker-compose up -d
-   ```
-   If the local container isn't running or the connection fails, the backend will automatically fallback to the cloud `MONGODB_HOST`.
+```bash
+# 1. Env files
+cp app/.env.example app/.env
+cp gui/.env.example gui/.env
 
-   **Other Integrations:**
-   - **Google Drive Storage**: Add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` for file storage.
-   - **AI Generation (Gemini)**: Add `GEMINI_API_KEY` to use the Gemini model for content generation.
+# 2. Python venv
+uv venv --python 3.11 .venv && source .venv/bin/activate
+uv pip install -r requirements.txt
+# (fallback: python3 -m venv .venv && pip install -r requirements.txt)
 
-2. **Install dependencies**:
-   This project uses `uv` for fast package management. The dependencies are defined in `pyproject.toml` and locked/resolved in `requirements.txt`.
-   
-   If you have `uv` installed:
-   ```bash
-   uv sync
-   # or
-   uv pip install -r requirements.txt
-   ```
-   *Fallback (using pip):*
-   ```bash
-   pip install -r requirements.txt
-   ```
+# 3. Frontend deps
+(cd gui && npm install)
+```
 
-3. **Run the API Server**:
-   ```bash
-   uvicorn app.main:app --reload
-   ```
-   *Alternatively, if using `poe`:*
-   ```bash
-   poe api
-   ```
-The backend API documentation will be available at [http://localhost:8000/docs](http://localhost:8000/docs).
+Optional keys in `app/.env`: `MONGODB_HOST` (Atlas fallback), `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (Drive), `GEMINI_API_KEY` (AI).
 
-### 2. Frontend (React + Vite)
-The frontend is located in the `gui` directory.
+### Day-to-day: three terminals
 
-**Prerequisites**: Node.js 18+ and npm.
+Mongo runs in Docker; backend and frontend run on the host for fast reloads and real debugger support.
 
-1. **Navigate to the frontend directory**:
-   ```bash
-   cd gui
-   ```
+```bash
+# Terminal 1 — database (leave running)
+docker-compose up -d mongodb
 
-2. **Environment Variables**:
-   Copy the example environment file inside the `gui` directory:
-   ```bash
-   cp .env.example .env
-   ```
-   Ensure `VITE_API_URL` is set to the backend API address (e.g., `http://localhost:8000`).
+# Terminal 2 — backend
+source .venv/bin/activate
+uvicorn app.main:app --reload          # or: poe api
 
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+# Terminal 3 — frontend
+cd gui && npm run dev                  # or: poe gui
+```
 
-3. **Run the development server**:
-   ```bash
-   npm run dev
-   ```
-   *Alternatively, using `poe` from the root directory:*
-   ```bash
-   poe gui
-   ```
+- API docs → [http://localhost:8000/docs](http://localhost:8000/docs)
+- UI → [http://localhost:5173](http://localhost:5173)
+
+> Mongo is mapped to host port **27018** (container-internal 27017) to avoid clashes with other local Mongo instances. If you change the mapping in `docker-compose.yml`, update `LOCAL_MONGODB_URI` in `app/.env` to match.
+
+Stop Mongo when done: `docker-compose down` (add `-v` to wipe the data volume).
+
+### Everything in Docker
+
+For smoke-testing or onboarding, run the full stack:
+
+```bash
+docker-compose up -d --build
+docker-compose logs -f backend         # tail logs
+docker-compose down                    # stop all
+```
 
 ---
 
