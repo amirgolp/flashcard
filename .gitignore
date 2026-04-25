@@ -1,5 +1,7 @@
 # Claude
 claude/
+.claude/
+.agents/
 CLAUDE.md
 
 # Python
@@ -97,8 +99,3 @@ instance/
 *.pid
 
 __pycache__
-
-.agents/
-.claude/
-
-.env
