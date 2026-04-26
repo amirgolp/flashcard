@@ -102,3 +102,7 @@ __pycache__
 .claude/
 
 .env
+
+# Allow Flutter sources under mobile/ (root rules above target Python packaging)
+!mobile/lib/
+!mobile/lib/**
