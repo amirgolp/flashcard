@@ -1,0 +1,56 @@
+name: flashcard_mobile
+description: Flutter mobile client for the Flashcard app.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Networking
+  dio: ^5.7.0
+
+  # State management & routing
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+  go_router: ^14.2.7
+
+  # Auth (OIDC / Zitadel)
+  flutter_appauth: ^7.0.2
+  flutter_secure_storage: ^9.2.2
+
+  # Local persistence
+  drift: ^2.20.3
+  sqlite3_flutter_libs: ^0.5.24
+  path_provider: ^2.1.4
+  path: ^1.9.0
+
+  # Files, PDFs, images, camera
+  file_picker: ^8.1.2
+  pdfx: ^2.6.0
+  camera: ^0.11.0+2
+  image_picker: ^1.1.2
+  flutter_image_compress: ^2.3.0
+
+  # UI
+  flutter_card_swiper: ^7.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+  # Codegen for drift + riverpod
+  build_runner: ^2.4.13
+  drift_dev: ^2.20.3
+  riverpod_generator: ^2.4.3
+  custom_lint: ^0.6.7
+  riverpod_lint: ^2.3.13
+
+flutter:
+  uses-material-design: true
