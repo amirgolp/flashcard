@@ -1,9 +1,12 @@
 import 'package:dio/dio.dart';
+import 'package:drift/native.dart';
 import 'package:flashcard_mobile/core/api/api_client.dart';
 import 'package:flashcard_mobile/core/api/decks_api.dart';
 import 'package:flashcard_mobile/core/api/providers.dart';
 import 'package:flashcard_mobile/core/api/token_store.dart';
 import 'package:flashcard_mobile/core/auth/auth_service.dart';
+import 'package:flashcard_mobile/core/db/app_database.dart';
+import 'package:flashcard_mobile/core/db/card_cache_service.dart';
 import 'package:flashcard_mobile/features/decks/decks_controller.dart';
 import 'package:flashcard_mobile/shared/models/deck.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,6 +41,16 @@ ResponseBody _json(int status, String body) => ResponseBody.fromString(
     );
 
 ProviderContainer _container(_Stub stub) {
+  // Path_provider isn't wired in unit tests, so AppDatabase()'s default
+  // constructor would throw; swap in an in-memory drift db.
+  bool sqliteAvailable = true;
+  AppDatabase? db;
+  try {
+    db = AppDatabase.forTesting(NativeDatabase.memory());
+  } catch (_) {
+    sqliteAvailable = false;
+  }
+
   return ProviderContainer(overrides: [
     tokenStoreProvider.overrideWith((_) => InMemoryTokenStore()),
     authServiceProvider.overrideWith((ref) => const NoopAuthService()),
@@ -52,6 +65,17 @@ ProviderContainer _container(_Stub stub) {
       return client;
     }),
     decksApiProvider.overrideWith((ref) => DecksApi(ref.watch(apiClientProvider))),
+    if (sqliteAvailable)
+      appDatabaseProvider.overrideWithValue(db!),
+    cardCacheServiceProvider.overrideWith((ref) {
+      // When sqlite isn't usable on this host, hand back a service that
+      // points at an unopened db; the snapshot call is best-effort and
+      // wrapped in try/catch by the controller anyway.
+      final database = sqliteAvailable
+          ? ref.watch(appDatabaseProvider)
+          : AppDatabase.forTesting(NativeDatabase.memory());
+      return CardCacheService(database, () => ref.read(decksApiProvider));
+    }),
   ]);
 }
 

@@ -5,6 +5,7 @@ import '../api/api_exception.dart';
 import '../api/auth_api.dart';
 import '../api/providers.dart';
 import '../api/token_store.dart';
+import '../db/card_cache_service.dart';
 import 'auth_service.dart';
 import 'auth_state.dart';
 import 'oidc_auth_service.dart';
@@ -46,6 +47,7 @@ class AuthController extends Notifier<AuthState> {
           if (session != null) {
             await _persistOidc(session);
             state = AuthState.authenticated(_userFromOidc(session));
+            _drainOfflineQueueInBackground();
             return;
           }
           await secure.clear();
@@ -54,16 +56,29 @@ class AuthController extends Notifier<AuthState> {
         }
         final id = await secure.readIdToken();
         state = AuthState.authenticated(_userFromIdToken(id));
+        _drainOfflineQueueInBackground();
         return;
       }
     } else {
       final token = await _tokenStore.readAccessToken();
       if (token != null && token.isNotEmpty) {
         state = AuthState.authenticated(_placeholderUser('restored'));
+        _drainOfflineQueueInBackground();
         return;
       }
     }
     state = const AuthState.unauthenticated();
+  }
+
+  void _drainOfflineQueueInBackground() {
+    Future<void>(() async {
+      try {
+        await ref.read(cardCacheServiceProvider).drainPending();
+      } on Object {
+        // Drain failures are silent — pending updates stay queued and
+        // the next session will retry.
+      }
+    });
   }
 
   Future<void> loginWithOidc() async {
