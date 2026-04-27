@@ -25,7 +25,7 @@ dart run build_runner build --delete-conflicting-outputs
 cp .env.example .env
 ```
 
-For Linux desktop builds you also need `clang cmake ninja-build pkg-config libgtk-3-dev`. For Android emulator support, install Android Studio and create an AVD.
+For Linux desktop builds, see the dedicated [Linux desktop](#running-on-linux-desktop) section below — it lists every system package the dependency tree pulls in. For Android emulator support, install Android Studio and create an AVD.
 
 ### Windows
 
@@ -76,7 +76,85 @@ Backend reachability:
 
 While `flutter run` is attached: press `r` for hot reload, `R` for hot restart, `q` to quit. Save any `.dart` file and the app updates in <1 s.
 
-> Mobile-only plugins (`flutter_appauth`, `camera`, `image_picker`, `pdfx`, `flutter_secure_storage`) throw `MissingPluginException` on web/desktop. Use Chrome/desktop for visual iteration on the deck and card UIs; use an Android emulator or physical device for end-to-end auth, PDF, and camera flows.
+> Mobile-only plugins (`flutter_appauth`, `camera`, `image_picker`, `pdfx`) throw `MissingPluginException` on web/desktop. Use Linux/Windows desktop for visual iteration on the deck and card UIs; use an Android emulator or physical device for end-to-end auth, PDF, and camera flows. Chrome is **not** a viable target for this app — drift + sqlite3_flutter_libs use `dart:ffi` which doesn't exist in browsers.
+
+## Running on Linux desktop
+
+Drift, FFI, and most of the auth/UI surface compile cleanly on Linux desktop, so this is the fastest way to see the app without an emulator. Mobile-only plugins (camera, image_picker, pdfx, flutter_appauth) throw `MissingPluginException` if you exercise them — login form, deck CRUD, theme switcher, settings, and offline cache all work.
+
+### One-time system packages
+
+```bash
+# GTK + build toolchain (Flutter Linux desktop core)
+sudo apt install clang cmake ninja-build pkg-config libgtk-3-dev
+
+# LLVM linker (drift's native_toolchain_c invokes clang and needs ld.lld)
+sudo apt install lld
+
+# libsecret backend for flutter_secure_storage
+sudo apt install libsecret-1-dev libjsoncpp-dev
+```
+
+If you skip any of these, the build fails with a fairly clear error pointing at the missing piece:
+
+| Missing package | Symptom |
+| --- | --- |
+| `libgtk-3-dev` | `Could NOT find PkgConfig` / `gtk+-3.0 was not found` from CMake. |
+| `clang` / `cmake` / `ninja-build` | "Unable to generate build files". |
+| `lld` | `Failed to find any of [ld.lld, ld] in LocalDirectory: '/usr/lib/llvm-10/bin'`. |
+| `libsecret-1-dev` | CMake fails inside `flutter_secure_storage_linux/CMakeLists.txt`. |
+
+### Add the Linux platform (one-time per checkout)
+
+The mobile project was created with `--platforms=android,ios`, so a fresh checkout has no `linux/` folder. Add it without overwriting your existing Dart sources:
+
+```bash
+cd mobile
+flutter create . --platforms=linux \
+  --project-name=flashcard_mobile \
+  --org=com.flashcard
+```
+
+### Run
+
+```bash
+export PATH="$HOME/development/flutter/bin:$PATH"
+flutter run -d linux \
+  --dart-define=API_BASE_URL=http://localhost:8000
+```
+
+### Backend dependencies
+
+```bash
+# In the repo root, in another terminal
+docker-compose up -d mongodb               # Mongo on host port 27018
+source .venv/bin/activate
+uvicorn app.main:app --reload              # FastAPI on :8000
+```
+
+Make sure [app/.env](../app/.env) has `LOCAL_MONGODB_URI=mongodb://admin:secretpassword@localhost:27018/flashcard_db?authSource=admin` (port **27018**, matching the compose mapping). The default `.env.example` ships with port 27017 which collides with whatever else you might have running.
+
+### Common build failures and fixes
+
+**`CMake Error … file INSTALL cannot copy file … to "/usr/local/flashcard_mobile": Permission denied`**
+
+`CMAKE_INSTALL_PREFIX` got cached as `/usr/local` from a stale CMake run. `flutter clean` and retry:
+
+```bash
+flutter clean
+flutter run -d linux --dart-define=API_BASE_URL=http://localhost:8000
+```
+
+If it persists, the `CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT` check in [linux/CMakeLists.txt](linux/CMakeLists.txt) isn't firing. Force the prefix unconditionally by replacing lines 81–83 with:
+
+```cmake
+set(BUILD_BUNDLE_DIR "${PROJECT_BINARY_DIR}/bundle")
+set(CMAKE_INSTALL_PREFIX "${BUILD_BUNDLE_DIR}" CACHE PATH "" FORCE)
+```
+
+**`MissingPluginException(No implementation found for method <X> on channel <Y>)` at runtime**
+
+You triggered a feature whose plugin doesn't have a Linux implementation. The list as of slice 8: `flutter_appauth` (OIDC), `camera`, `image_picker`, `pdfx`. Avoid those flows on desktop or use the Android emulator.
 
 ## Day-to-day commands
 
