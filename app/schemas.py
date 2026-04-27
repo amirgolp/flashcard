@@ -298,6 +298,21 @@ class GenerateFromRangeRequest(BaseModel):
     template_id: str | None = None
 
 
+class GenerateFromImageRequest(BaseModel):
+    """Single-image generation. Used by the mobile camera flow to send
+    a photo of a page (typed or handwritten) to Gemini for card
+    extraction. The image is sent base64-encoded so the request stays
+    JSON.
+    """
+
+    image_base64: str
+    mime_type: str = "image/jpeg"
+    book_id: str
+    num_cards: int = Field(default=10, ge=1, le=30)
+    template_id: str | None = None
+    source_page: int | None = None
+
+
 class GenerationResponse(BaseModel):
     batch_id: str
     drafts: list[DraftCardResponse]

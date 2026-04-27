@@ -8,6 +8,7 @@ from .models import (
 )
 from .utils.gemini import (
     generate_flashcards_from_pdf,
+    generate_flashcards_from_image,
     extract_page_range_as_pdf,
     get_pdf_page_count,
 )
@@ -705,6 +706,128 @@ def generate_from_range(
         return _generate_and_store_drafts(book, start_page, end_page, num_cards, db, owner, template_id)
     except Book.DoesNotExist:
         raise HTTPException(status_code=404, detail="Book not found")
+
+
+def generate_from_image(
+    book_id: str,
+    image_bytes: bytes,
+    mime_type: str,
+    num_cards: int,
+    template_id: str = None,
+    source_page: int | None = None,
+    db: str = "default",
+    owner: User = None,
+) -> schemas.GenerationResponse:
+    """Generate drafts from a single image (camera capture / handwritten
+    note) attached to an existing book. Mirrors generate_from_range but
+    skips PDF extraction — Gemini receives the image directly.
+    """
+    try:
+        book = Book.objects.using(db).get(id=ObjectId(book_id), owner=owner)
+    except Book.DoesNotExist:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    if not image_bytes:
+        raise HTTPException(status_code=400, detail="image_bytes is empty")
+
+    template = None
+    if template_id:
+        try:
+            template = Template.objects.using(db).get(id=ObjectId(template_id))
+        except Template.DoesNotExist:
+            raise HTTPException(status_code=400, detail="Template not found")
+
+    # Page range stored on the draft. When the client supplied a source
+    # page (which is the typical case from the BookDetailPage capture
+    # flow) we use it for both ends; otherwise we leave them null so
+    # downstream code can tell this draft came from an image.
+    start_page = source_page if source_page is not None else 0
+    end_page = source_page if source_page is not None else 0
+
+    result = generate_flashcards_from_image(
+        image_bytes=image_bytes,
+        mime_type=mime_type,
+        num_cards=num_cards,
+        target_language=book.target_language or "the target language",
+        native_language=book.native_language or "English",
+        template=template,
+    )
+
+    batch_id = str(uuid.uuid4())
+    drafts = []
+    tag_label = (
+        f"image-page-{source_page}" if source_page is not None else "image"
+    )
+
+    for fc in result.flashcards:
+        if template:
+            fc_dict = fc.model_dump()
+            custom_fields = {f.name: fc_dict.get(f.name) for f in template.fields}
+            front_field = next(
+                (f.name for f in template.fields if f.show_on_front),
+                template.fields[0].name if template.fields else "front",
+            )
+            back_field = next(
+                (f.name for f in template.fields if not f.show_on_front),
+                template.fields[-1].name if template.fields else "back",
+            )
+            front_val = fc_dict.get(front_field)
+            back_val = fc_dict.get(back_field)
+            draft = DraftCard(
+                front=str(front_val) if front_val else "Template Generated Front",
+                back=str(back_val) if back_val else "Template Generated Back",
+                template_id=template,
+                custom_fields=custom_fields,
+                tags=[tag_label],
+                book=book,
+                source_page_start=source_page,
+                source_page_end=source_page,
+                generation_batch_id=batch_id,
+                owner=owner,
+            )
+        else:
+            draft = DraftCard(
+                front=fc.front,
+                back=fc.back,
+                examples=[
+                    ExampleSentence(
+                        sentence=ex.get("sentence", ""),
+                        translation=ex.get("translation", ""),
+                    )
+                    for ex in fc.examples
+                ],
+                synonyms=fc.synonyms,
+                antonyms=fc.antonyms,
+                part_of_speech=fc.part_of_speech,
+                gender=fc.gender,
+                plural_form=fc.plural_form,
+                pronunciation=fc.pronunciation,
+                notes=fc.notes,
+                tags=[tag_label],
+                book=book,
+                source_page_start=source_page,
+                source_page_end=source_page,
+                generation_batch_id=batch_id,
+                owner=owner,
+            )
+        draft.save(using=db)
+        drafts.append(draft)
+
+    if source_page is not None:
+        # Mark the single source page as processed so subsequent
+        # next-batch calls skip it.
+        try:
+            add_processed_pages(str(book.id), source_page, source_page, db, owner)
+        except Exception:
+            # Progress tracking is non-fatal — the drafts were saved.
+            pass
+
+    return schemas.GenerationResponse(
+        batch_id=batch_id,
+        drafts=[_draft_to_response(d) for d in drafts],
+        pages_processed=schemas.PageRangeSchema(start=start_page, end=end_page),
+        message=f"Generated {len(drafts)} flashcard drafts from image",
+    )
 
 
 def _generate_and_store_drafts(
