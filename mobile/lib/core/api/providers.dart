@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../auth/auth_service.dart';
+import '../auth/secure_token_store.dart';
 import 'api_client.dart';
 import 'auth_api.dart';
 import 'books_api.dart';
@@ -21,10 +22,7 @@ final apiBaseUrlProvider = Provider<String>((ref) {
   return value;
 });
 
-final tokenStoreProvider = Provider<TokenStore>((ref) {
-  // Slice 3 swaps this for a flutter_secure_storage-backed impl.
-  return InMemoryTokenStore();
-});
+final tokenStoreProvider = Provider<TokenStore>((ref) => SecureTokenStore());
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   final auth = ref.watch(authServiceProvider);

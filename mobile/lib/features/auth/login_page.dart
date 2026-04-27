@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
 import '../../core/auth/auth_state.dart';
+import '../../core/auth/oidc_config.dart';
 import '../../core/router/app_router.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -25,7 +26,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  Future<void> _submitPassword() async {
     if (!_formKey.currentState!.validate()) return;
     await ref.read(authControllerProvider.notifier).login(
           username: _username.text.trim(),
@@ -33,10 +34,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         );
   }
 
+  Future<void> _submitOidc() async {
+    await ref.read(authControllerProvider.notifier).loginWithOidc();
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
     final busy = auth.status == AuthStatus.authenticating;
+    const oidc = OidcConfig.fromEnv;
 
     return Scaffold(
       body: SafeArea(
@@ -57,6 +63,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 32),
+                    if (oidc.isConfigured) ...[
+                      FilledButton.icon(
+                        onPressed: busy ? null : _submitOidc,
+                        icon: const Icon(Icons.shield_outlined),
+                        label: const Text('Sign in with Zitadel'),
+                      ),
+                      const SizedBox(height: 16),
+                      const _OrDivider(),
+                      const SizedBox(height: 16),
+                    ],
                     TextFormField(
                       controller: _username,
                       decoration: const InputDecoration(
@@ -80,7 +96,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       obscureText: true,
                       autofillHints: const [AutofillHints.password],
                       textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _submit(),
+                      onFieldSubmitted: (_) => _submitPassword(),
                       validator: (v) => (v == null || v.isEmpty)
                           ? 'Password is required'
                           : null,
@@ -91,15 +107,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       _ErrorBanner(message: auth.errorMessage!),
                     ],
                     const SizedBox(height: 24),
-                    FilledButton(
-                      onPressed: busy ? null : _submit,
+                    OutlinedButton(
+                      onPressed: busy ? null : _submitPassword,
                       child: busy
                           ? const SizedBox(
                               height: 20,
                               width: 20,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('Log in'),
+                          : const Text('Log in with username'),
                     ),
                     const SizedBox(height: 12),
                     TextButton(
@@ -115,6 +131,24 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _OrDivider extends StatelessWidget {
+  const _OrDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        Expanded(child: Divider()),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12),
+          child: Text('OR'),
+        ),
+        Expanded(child: Divider()),
+      ],
     );
   }
 }
