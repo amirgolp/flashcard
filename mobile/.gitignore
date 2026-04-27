@@ -32,6 +32,19 @@ android/local.properties
 android/key.properties
 android/app/release/
 
+# Flutter-generated platform glue. These are recreated on every
+# `flutter pub get` / `flutter run` from pubspec + native code; tracking
+# them produces noisy diffs and merge conflicts. The Gradle wrapper
+# (gradlew, gradlew.bat, gradle-wrapper.jar) is deliberately NOT in
+# this list — those scripts must stay committed so a fresh checkout
+# can build without a system-wide Gradle install.
+**/GeneratedPluginRegistrant.java
+**/GeneratedPluginRegistrant.h
+**/GeneratedPluginRegistrant.m
+ios/Flutter/Generated.xcconfig
+ios/Flutter/ephemeral/
+ios/Flutter/flutter_export_environment.sh
+
 # Env / secrets
 .env
 .env.*
