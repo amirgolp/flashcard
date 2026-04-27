@@ -52,29 +52,36 @@ class FlipCardState extends State<FlipCard>
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: toggle,
-      child: AnimatedBuilder(
-        animation: _animation,
-        builder: (context, _) {
-          final angle = _animation.value;
-          final isFront = angle <= math.pi / 2;
-          final transform = Matrix4.identity()
-            ..setEntry(3, 2, 0.001) // perspective
-            ..rotateY(angle);
-          return Transform(
-            alignment: Alignment.center,
-            transform: transform,
-            child: isFront
-                ? widget.front
-                : Transform(
-                    alignment: Alignment.center,
-                    transform: Matrix4.identity()..rotateY(math.pi),
-                    child: widget.back,
-                  ),
-          );
-        },
+    return Semantics(
+      button: true,
+      label: 'Flashcard, tap to flip',
+      hint: _showingFront
+          ? 'Showing front. Activate to reveal answer.'
+          : 'Showing answer. Activate to flip back.',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: toggle,
+        child: AnimatedBuilder(
+          animation: _animation,
+          builder: (context, _) {
+            final angle = _animation.value;
+            final isFront = angle <= math.pi / 2;
+            final transform = Matrix4.identity()
+              ..setEntry(3, 2, 0.001) // perspective
+              ..rotateY(angle);
+            return Transform(
+              alignment: Alignment.center,
+              transform: transform,
+              child: isFront
+                  ? widget.front
+                  : Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.identity()..rotateY(math.pi),
+                      child: widget.back,
+                    ),
+            );
+          },
+        ),
       ),
     );
   }
