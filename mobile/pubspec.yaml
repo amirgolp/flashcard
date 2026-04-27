@@ -61,5 +61,32 @@ dev_dependencies:
   # back once the ecosystem reconverges. Manual Provider definitions in
   # lib/core/ avoid the need for riverpod_generator.
 
+  # App icon + splash generators. Source PNGs live under
+  # assets/branding/. These are placeholders; replace the source files
+  # with designer-supplied art and rerun:
+  #   dart run flutter_launcher_icons
+  #   dart run flutter_native_splash:create
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.7
+
 flutter:
   uses-material-design: true
+  assets:
+    - assets/branding/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/branding/icon.png
+  adaptive_icon_background: "#3F51B5"
+  adaptive_icon_foreground: assets/branding/icon_foreground.png
+  remove_alpha_ios: true
+
+flutter_native_splash:
+  color: "#3F51B5"
+  image: assets/branding/splash_logo.png
+  android_12:
+    color: "#3F51B5"
+    image: assets/branding/splash_logo.png
+  android: true
+  ios: true

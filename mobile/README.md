@@ -133,15 +133,33 @@ Issue #11's acceptance criteria are implemented across PRs `mobile-impl-slice1-a
 - Material 3 shell with bottom-nav and offline banner.
 - Decks + cards CRUD, with a swipeable flip-card review session (swipe right=easy, up=medium, left=hard) backed by `flutter_card_swiper`.
 - Book upload via `file_picker`, page-range driven card generation, draft review (approve / reject).
-- Camera + gallery capture via `image_picker` + `flutter_image_compress`, posting base64-encoded JPEG to a planned `/generate/from-image` endpoint.
+- Camera + gallery capture via `image_picker` + `flutter_image_compress`, posting base64-encoded JPEG to the backend's `/generate/from-image` endpoint.
 - Offline-first card review: cached cards in drift, optimistic hardness updates queued when offline, drained on reconnect / login restore.
 - Production polish: zone-guarded error reporter, connectivity awareness, accessible flip-card semantics, theme switcher (system / light / dark) persisted in `SharedPreferences`, app version display.
+
+### Branding assets
+
+App icon and native splash are generated from three placeholder PNGs in `assets/branding/`:
+
+| File | Purpose |
+| --- | --- |
+| `icon.png` (1024×1024) | iOS icon + Android legacy icon source. |
+| `icon_foreground.png` (1024×1024, transparent) | Android adaptive-icon foreground. Background is the brand colour from `pubspec.yaml`. |
+| `splash_logo.png` (1024×1024, transparent) | Native splash logo, centred on the splash background colour. |
+
+Replace these files with designer-supplied art and rerun the generators to update every platform-specific asset:
+
+```bash
+dart run flutter_launcher_icons
+dart run flutter_native_splash:create
+```
+
+The generated platform files (`mipmap-*`, `Assets.xcassets`, `launch_background.xml`, etc.) are committed so a fresh checkout can build without rerunning the generators.
 
 ### Production deploy still needs
 
 - A real Zitadel client (issuer / client ID / redirect URI) — the redirect scheme `com.flashcard.mobile` is already registered in `android/app/build.gradle.kts` and `ios/Runner/Info.plist`.
-- Backend `/generate/from-image` endpoint (the mobile client posts to this path; until the backend ships it the camera flow surfaces a 404 error).
 - Android release signing config: replace `signingConfigs.getByName("debug")` in `android/app/build.gradle.kts` with a release keystore.
 - iOS code-signing certificate + App Store provisioning profile.
 - Sentry / Crashlytics adapter — `lib/core/observability/error_reporter.dart` defines an `ErrorReporter` interface; wire a Sentry implementation by reading `SENTRY_DSN` via `--dart-define`.
-- Designer-supplied app icons + splash assets to replace the Flutter defaults.
+- Real branding artwork — drop replacement PNGs into `assets/branding/` and rerun the icon + splash generators (see above).
