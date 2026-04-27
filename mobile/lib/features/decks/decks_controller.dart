@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/providers.dart';
+import '../../core/db/card_cache_service.dart';
 import '../../shared/models/deck.dart';
 
 /// Owns the list of decks for the signed-in user. Uses [AsyncValue] so
@@ -8,13 +9,29 @@ import '../../shared/models/deck.dart';
 class DecksController extends AsyncNotifier<List<Deck>> {
   @override
   Future<List<Deck>> build() async {
-    final api = ref.read(decksApiProvider);
-    return api.list();
+    final decks = await ref.read(decksApiProvider).list();
+    _snapshotInBackground(decks);
+    return decks;
   }
 
   Future<void> refresh() async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => ref.read(decksApiProvider).list());
+    state = await AsyncValue.guard(() async {
+      final decks = await ref.read(decksApiProvider).list();
+      _snapshotInBackground(decks);
+      return decks;
+    });
+  }
+
+  void _snapshotInBackground(List<Deck> decks) {
+    // Best-effort cache write — never block the UI on it.
+    Future<void>(() async {
+      try {
+        await ref.read(cardCacheServiceProvider).snapshotDecks(decks);
+      } on Object {
+        // Cache failures are non-fatal; the UI keeps the in-memory copy.
+      }
+    });
   }
 
   Future<Deck> create(DeckCreate input) async {

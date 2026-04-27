@@ -21,23 +21,48 @@ class Books extends Table {
 
 class CachedCards extends Table {
   TextColumn get id => text()();
+  TextColumn get deckId => text().nullable()();
   TextColumn get front => text()();
   TextColumn get back => text()();
   TextColumn get hardnessLevel => text()();
   DateTimeColumn get nextReviewAt => dateTime().nullable()();
+  DateTimeColumn get cachedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Books, CachedCards])
+/// Hardness updates that couldn't be sent to the backend yet (offline,
+/// network error). Replayed by [CardCacheService.drainPending].
+class PendingCardUpdates extends Table {
+  TextColumn get cardId => text()();
+  TextColumn get hardnessLevel => text()();
+  DateTimeColumn get queuedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {cardId};
+}
+
+@DriftDatabase(tables: [Books, CachedCards, PendingCardUpdates])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(cachedCards, cachedCards.deckId);
+            await m.addColumn(cachedCards, cachedCards.cachedAt);
+            await m.createTable(pendingCardUpdates);
+          }
+        },
+      );
 }
 
 LazyDatabase _openConnection() {

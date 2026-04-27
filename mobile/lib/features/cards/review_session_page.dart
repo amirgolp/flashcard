@@ -3,12 +3,27 @@ import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/api/providers.dart';
+import '../../core/db/card_cache_service.dart';
 import '../../shared/models/card.dart' as model;
 import '../../shared/widgets/error_view.dart';
 import '../../shared/widgets/flip_card.dart';
 import '../../shared/widgets/hardness_badge.dart';
 import '../decks/decks_controller.dart';
+
+/// Resolves the card list for a deck. Tries the network first; on
+/// failure falls back to whatever the offline cache holds. Either way
+/// we trigger a queue drain so any past offline edits sync now.
+final _reviewCardsProvider = FutureProvider.autoDispose
+    .family<List<model.Card>, String>((ref, deckId) async {
+  final cache = ref.read(cardCacheServiceProvider);
+  await cache.drainPending();
+  try {
+    final deck = await ref.read(deckByIdProvider(deckId).future);
+    return deck.cards;
+  } on Object {
+    return cache.cachedForDeck(deckId);
+  }
+});
 
 class ReviewSessionPage extends ConsumerStatefulWidget {
   const ReviewSessionPage({required this.deckId, super.key});
@@ -44,60 +59,53 @@ class _ReviewSessionPageState extends ConsumerState<ReviewSessionPage> {
       }
     });
 
-    if (card.hardnessLevel != level) {
-      // Fire-and-forget update — UI stays responsive even if the
-      // request takes a moment. Errors surface as a transient snackbar.
-      try {
-        await ref.read(cardsApiProvider).update(
-              card.id,
-              model.CardUpdate(hardnessLevel: level),
-            );
-      } on Object catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to save hardness: $e')),
-          );
-        }
-      }
-    }
+    if (card.hardnessLevel == level) return;
+
+    // Always write to the local cache first so a session can finish
+    // offline — then ask the cache service to drain (sync) which will
+    // either succeed silently or leave the update queued for next time.
+    final cache = ref.read(cardCacheServiceProvider);
+    await cache.recordHardness(card.id, level);
+    await cache.drainPending();
   }
 
   @override
   Widget build(BuildContext context) {
-    final deckAsync = ref.watch(deckByIdProvider(widget.deckId));
+    final cardsAsync = ref.watch(_reviewCardsProvider(widget.deckId));
     return Scaffold(
       appBar: AppBar(title: const Text('Review')),
-      body: deckAsync.when(
+      body: cardsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorView(
           error: e,
-          onRetry: () => ref.invalidate(deckByIdProvider(widget.deckId)),
+          onRetry: () => ref.invalidate(_reviewCardsProvider(widget.deckId)),
         ),
-        data: (deck) {
-          if (deck.cards.isEmpty) {
+        data: (cards) {
+          if (cards.isEmpty) {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: Text(
-                  'This deck has no cards to review.',
+                  'No cards to review for this deck — connect once online to '
+                  'sync them.',
                   textAlign: TextAlign.center,
                 ),
               ),
             );
           }
-          if (_index >= deck.cards.length) {
+          if (_index >= cards.length) {
             return _SessionSummary(
-              total: deck.cards.length,
+              total: cards.length,
               easy: _easyCount,
               medium: _mediumCount,
               hard: _hardCount,
             );
           }
           return _ReviewBody(
-            deckCards: deck.cards,
+            deckCards: cards,
             swiperController: _swiper,
             onSwipe: (previous, _, direction) {
-              final card = deck.cards[previous];
+              final card = cards[previous];
               final level = switch (direction) {
                 CardSwiperDirection.right => model.HardnessLevel.easy,
                 CardSwiperDirection.top => model.HardnessLevel.medium,
