@@ -43,10 +43,11 @@ class GenerationApi {
     }
   }
 
-  Future<GenerationResponse> fromRange(GenerateFromRangeRequest input) async {
+  Future<GenerationResponse> fromImages(
+      GenerateFromImagesRequest input) async {
     try {
       final response = await _client.dio.post<Object?>(
-        '/generate/from-range',
+        '/generate/from-images',
         data: input.toJson(),
       );
       return decodeResponse(

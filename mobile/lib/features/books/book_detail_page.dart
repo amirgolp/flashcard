@@ -3,10 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_exception.dart';
-import '../../core/api/providers.dart';
 import '../../core/router/app_router.dart';
-import '../../shared/models/generation.dart';
 import '../../shared/widgets/error_view.dart';
+import '../generation/range_generation_controller.dart';
 import 'books_controller.dart';
 
 class BookDetailPage extends ConsumerStatefulWidget {
@@ -155,22 +154,26 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
       _error = null;
     });
     try {
-      final response = await ref.read(generationApiProvider).fromRange(
-            GenerateFromRangeRequest(
-              bookId: bookId,
-              startPage: start,
-              endPage: end,
-              numCards: _numCards,
-            ),
+      final result = await ref
+          .read(rangeGenerationControllerProvider)
+          .generate(
+            bookId: bookId,
+            startPage: start,
+            endPage: end,
+            numCards: _numCards,
           );
-      setState(() => _lastBatchId = response.batchId);
+      setState(() => _lastBatchId = result.batchId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response.message)),
+          SnackBar(content: Text(result.message)),
         );
       }
     } on ApiException catch (e) {
       setState(() => _error = e.message);
+    } on Object catch (e) {
+      // Local rendering / drift lookup can throw outside the API
+      // surface — surface those too.
+      setState(() => _error = 'Could not generate cards: $e');
     } finally {
       if (mounted) setState(() => _generating = false);
     }

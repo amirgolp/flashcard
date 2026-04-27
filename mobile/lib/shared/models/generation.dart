@@ -23,30 +23,6 @@ class GenerateNextBatchRequest {
       });
 }
 
-class GenerateFromRangeRequest {
-  const GenerateFromRangeRequest({
-    required this.bookId,
-    required this.startPage,
-    required this.endPage,
-    this.numCards = 10,
-    this.templateId,
-  });
-
-  final String bookId;
-  final int startPage;
-  final int endPage;
-  final int numCards;
-  final String? templateId;
-
-  JsonMap toJson() => stripNulls({
-        'book_id': bookId,
-        'start_page': startPage,
-        'end_page': endPage,
-        'num_cards': numCards,
-        'template_id': templateId,
-      });
-}
-
 class GenerationResponse {
   const GenerationResponse({
     required this.batchId,
