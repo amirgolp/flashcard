@@ -39,45 +39,20 @@ class BooksApi {
     }
   }
 
-  Future<Book> upload({
-    required List<int> bytes,
-    required String filename,
-    required String title,
-    String? targetLanguage,
-    String? nativeLanguage,
-    void Function(int sent, int total)? onProgress,
-  }) async {
-    final form = FormData.fromMap({
-      'file': MultipartFile.fromBytes(bytes, filename: filename),
-      'title': title,
-      if (targetLanguage != null) 'target_language': targetLanguage,
-      if (nativeLanguage != null) 'native_language': nativeLanguage,
-    });
+  /// Registers a metadata-only book record on the server. The PDF
+  /// itself stays on the client device; the server stores
+  /// `storage_type='device'` and uses this record only as an anchor
+  /// for cards and progress.
+  Future<Book> create(BookCreate input) async {
     try {
       final response = await _client.dio.post<Object?>(
-        '/books/upload',
-        data: form,
-        onSendProgress: onProgress,
+        '/books/',
+        data: input.toJson(),
       );
       return decodeResponse(
         response,
         (data) => Book.fromJson(data as JsonMap),
       );
-    } on DioException catch (e) {
-      throw _toApi(e);
-    }
-  }
-
-  /// Streams the PDF bytes for a book back to the caller. The result is
-  /// stored in memory; for very large books a future rev should stream
-  /// directly to disk.
-  Future<List<int>> download(String id) async {
-    try {
-      final response = await _client.dio.get<List<int>>(
-        '/books/$id/download',
-        options: Options(responseType: ResponseType.bytes),
-      );
-      return response.data ?? const [];
     } on DioException catch (e) {
       throw _toApi(e);
     }

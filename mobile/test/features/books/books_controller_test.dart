@@ -1,9 +1,12 @@
 import 'package:dio/dio.dart';
+import 'package:drift/native.dart';
 import 'package:flashcard_mobile/core/api/api_client.dart';
 import 'package:flashcard_mobile/core/api/books_api.dart';
 import 'package:flashcard_mobile/core/api/providers.dart';
 import 'package:flashcard_mobile/core/api/token_store.dart';
 import 'package:flashcard_mobile/core/auth/auth_service.dart';
+import 'package:flashcard_mobile/core/db/app_database.dart';
+import 'package:flashcard_mobile/core/db/card_cache_service.dart';
 import 'package:flashcard_mobile/features/books/books_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -36,7 +39,8 @@ ResponseBody _json(int status, String body) => ResponseBody.fromString(
       },
     );
 
-ProviderContainer _container(_Stub stub) => ProviderContainer(overrides: [
+ProviderContainer _container(_Stub stub, {AppDatabase? db}) =>
+    ProviderContainer(overrides: [
       tokenStoreProvider.overrideWith((_) => InMemoryTokenStore()),
       authServiceProvider.overrideWith((ref) => const NoopAuthService()),
       apiClientProvider.overrideWith((ref) {
@@ -50,6 +54,7 @@ ProviderContainer _container(_Stub stub) => ProviderContainer(overrides: [
         return c;
       }),
       booksApiProvider.overrideWith((ref) => BooksApi(ref.watch(apiClientProvider))),
+      if (db != null) appDatabaseProvider.overrideWithValue(db),
     ]);
 
 void main() {
@@ -70,6 +75,15 @@ void main() {
   });
 
   test('delete removes the book from the cached list', () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+    try {
+      await db.customSelect('SELECT 1').get();
+    } catch (e) {
+      markTestSkipped('native sqlite unavailable: $e');
+      return;
+    }
+
     final stub = _Stub((options) {
       if (options.method == 'GET') {
         return _json(
@@ -84,7 +98,7 @@ void main() {
       }
       return _json(200, '{"detail":"deleted"}');
     });
-    final container = _container(stub);
+    final container = _container(stub, db: db);
     addTearDown(container.dispose);
 
     await container.read(booksControllerProvider.future);

@@ -76,6 +76,33 @@ class Book {
       );
 }
 
+class BookCreate {
+  const BookCreate({
+    required this.title,
+    required this.totalPages,
+    this.filename,
+    this.targetLanguage,
+    this.nativeLanguage,
+    this.chapters,
+  });
+
+  final String title;
+  final int totalPages;
+  final String? filename;
+  final String? targetLanguage;
+  final String? nativeLanguage;
+  final List<Chapter>? chapters;
+
+  JsonMap toJson() => stripNulls({
+        'title': title,
+        'total_pages': totalPages,
+        'filename': filename,
+        'target_language': targetLanguage,
+        'native_language': nativeLanguage,
+        'chapters': chapters?.map((c) => c.toJson()).toList(),
+      });
+}
+
 class BookUpdate {
   const BookUpdate({
     this.title,

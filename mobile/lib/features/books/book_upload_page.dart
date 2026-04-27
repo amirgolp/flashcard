@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,7 +22,7 @@ class _BookUploadPageState extends ConsumerState<BookUploadPage> {
   final _nativeLang = TextEditingController();
 
   PlatformFile? _file;
-  double? _progress;
+  bool _busy = false;
   String? _error;
 
   @override
@@ -60,12 +62,12 @@ class _BookUploadPageState extends ConsumerState<BookUploadPage> {
       return;
     }
     setState(() {
-      _progress = 0;
+      _busy = true;
       _error = null;
     });
     try {
-      await ref.read(booksControllerProvider.notifier).upload(
-            bytes: bytes,
+      await ref.read(booksControllerProvider.notifier).register(
+            bytes: Uint8List.fromList(bytes),
             filename: _file!.name,
             title: _title.text.trim(),
             targetLanguage: _targetLang.text.trim().isEmpty
@@ -74,29 +76,32 @@ class _BookUploadPageState extends ConsumerState<BookUploadPage> {
             nativeLanguage: _nativeLang.text.trim().isEmpty
                 ? null
                 : _nativeLang.text.trim(),
-            onProgress: (sent, total) {
-              if (total <= 0) return;
-              setState(() => _progress = sent / total);
-            },
           );
       if (mounted) context.pop();
     } on ApiException catch (e) {
       setState(() {
         _error = e.message;
-        _progress = null;
+        _busy = false;
+      });
+    } on Object catch (e) {
+      // Local steps (PDF parsing, drift insert, file write) can throw
+      // arbitrary errors; surface them so the user can retry.
+      setState(() {
+        _error = 'Could not register book: $e';
+        _busy = false;
       });
     } finally {
-      if (mounted && _error != null) {
-        setState(() => _progress = null);
+      if (mounted && _error == null) {
+        setState(() => _busy = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final busy = _progress != null;
+    final busy = _busy;
     return Scaffold(
-      appBar: AppBar(title: const Text('Upload book')),
+      appBar: AppBar(title: const Text('Add book')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -140,10 +145,6 @@ class _BookUploadPageState extends ConsumerState<BookUploadPage> {
                     ),
                   ],
                 ),
-                if (_progress != null) ...[
-                  const SizedBox(height: 16),
-                  LinearProgressIndicator(value: _progress),
-                ],
                 if (_error != null) ...[
                   const SizedBox(height: 16),
                   Text(
@@ -156,9 +157,8 @@ class _BookUploadPageState extends ConsumerState<BookUploadPage> {
                 FilledButton(
                   onPressed: busy ? null : _submit,
                   child: busy
-                      ? Text(
-                          'Uploading… ${((_progress ?? 0) * 100).round()}%')
-                      : const Text('Upload'),
+                      ? const Text('Saving…')
+                      : const Text('Add book'),
                 ),
               ],
             ),

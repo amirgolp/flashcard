@@ -1,7 +1,14 @@
+import 'dart:typed_data';
+
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/providers.dart';
+import '../../core/db/app_database.dart' show BooksCompanion;
+import '../../core/db/card_cache_service.dart';
+import '../../core/pdf/pdf_metadata.dart';
 import '../../shared/models/book.dart';
+import 'local_book_store.dart';
 
 class BooksController extends AsyncNotifier<List<Book>> {
   @override
@@ -12,30 +19,73 @@ class BooksController extends AsyncNotifier<List<Book>> {
     state = await AsyncValue.guard(() => ref.read(booksApiProvider).list());
   }
 
-  /// Uploads bytes to the backend, prepends the new book to the cache,
-  /// and returns it.
-  Future<Book> upload({
-    required List<int> bytes,
+  /// Registers a book whose PDF lives on the device.
+  ///
+  /// Order: derive page count from the bytes, POST metadata to the
+  /// server (returns the canonical book id), persist the bytes to
+  /// `<appDocs>/books/<id>.pdf`, then index the book locally in
+  /// drift. If the local steps fail after the server insert, the book
+  /// record is rolled back so the server doesn't keep an orphan.
+  Future<Book> register({
+    required Uint8List bytes,
     required String filename,
     required String title,
     String? targetLanguage,
     String? nativeLanguage,
-    void Function(int sent, int total)? onProgress,
   }) async {
-    final book = await ref.read(booksApiProvider).upload(
-          bytes: bytes,
-          filename: filename,
-          title: title,
-          targetLanguage: targetLanguage,
-          nativeLanguage: nativeLanguage,
-          onProgress: onProgress,
-        );
+    final pageCount = await ref.read(pdfPageCounterProvider)(bytes);
+    final api = ref.read(booksApiProvider);
+
+    final book = await api.create(
+      BookCreate(
+        title: title,
+        totalPages: pageCount,
+        filename: filename,
+        targetLanguage: targetLanguage,
+        nativeLanguage: nativeLanguage,
+      ),
+    );
+
+    final docsRoot = ref.read(localBookDocsRootProvider);
+    try {
+      final filePath = await LocalBookStore.writeBookPdf(
+        bookId: book.id,
+        bytes: bytes,
+        docsRoot: docsRoot,
+      );
+
+      final db = ref.read(appDatabaseProvider);
+      await db.into(db.books).insertOnConflictUpdate(
+            BooksCompanion.insert(
+              id: book.id,
+              title: book.title,
+              filePath: filePath,
+              totalPages: book.totalPages,
+              currentPage: const Value(1),
+            ),
+          );
+    } on Object {
+      await LocalBookStore.deleteBookPdf(book.id, docsRoot: docsRoot);
+      try {
+        await api.delete(book.id);
+      } on Object {
+        // Best-effort rollback only.
+      }
+      rethrow;
+    }
+
     state = AsyncValue.data([book, ...?state.value]);
     return book;
   }
 
   Future<void> delete(String id) async {
     await ref.read(booksApiProvider).delete(id);
+    await LocalBookStore.deleteBookPdf(
+      id,
+      docsRoot: ref.read(localBookDocsRootProvider),
+    );
+    final db = ref.read(appDatabaseProvider);
+    await (db.delete(db.books)..where((b) => b.id.equals(id))).go();
     final current = state.value ?? const [];
     state = AsyncValue.data([
       for (final b in current)

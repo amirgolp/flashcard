@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pdfrx/pdfrx.dart';
 
 import 'core/auth/auth_controller.dart';
 import 'core/auth/auth_service.dart';
@@ -8,7 +9,12 @@ import 'core/preferences/prefs_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Initialize pdfrx so PdfDocument.openData / openFile resolve to a
+  // native renderer on every platform we ship to. Cheap and idempotent.
+  await pdfrxFlutterInitialize(dismissPdfiumWasmWarnings: true);
+
   const reporter = LoggingErrorReporter();
   runGuardedApp(
     () => runApp(
