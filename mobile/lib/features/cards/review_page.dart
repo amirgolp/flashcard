@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 
-class BooksPage extends StatelessWidget {
-  const BooksPage({super.key});
+class ReviewPage extends StatelessWidget {
+  const ReviewPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Books')),
+      appBar: AppBar(title: const Text('Review')),
       body: const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            'Books library — coming in slice 5',
+            'Card review — coming in slice 4',
             textAlign: TextAlign.center,
           ),
         ),

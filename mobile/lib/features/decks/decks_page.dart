@@ -7,7 +7,15 @@ class DecksPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Decks')),
-      body: const Center(child: Text('Decks list — TODO')),
+      body: const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'Decks list — coming in slice 4',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
     );
   }
 }
