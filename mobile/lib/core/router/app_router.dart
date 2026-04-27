@@ -5,12 +5,15 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/auth/register_page.dart';
 import '../../features/auth/splash_page.dart';
+import '../../features/books/book_detail_page.dart';
+import '../../features/books/book_upload_page.dart';
 import '../../features/books/books_page.dart';
 import '../../features/cards/review_page.dart';
 import '../../features/cards/review_session_page.dart';
 import '../../features/decks/deck_detail_page.dart';
 import '../../features/decks/deck_form_page.dart';
 import '../../features/decks/decks_page.dart';
+import '../../features/generation/drafts_review_page.dart';
 import '../../features/settings/settings_page.dart';
 import '../../features/shell/home_shell.dart';
 import '../auth/auth_controller.dart';
@@ -65,6 +68,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.register,
         builder: (_, __) => const RegisterPage(),
+      ),
+      // Book-scoped pages live OUTSIDE the shell.
+      GoRoute(
+        path: '${AppRoutes.books}/upload',
+        builder: (_, __) => const BookUploadPage(),
+      ),
+      GoRoute(
+        path: '${AppRoutes.books}/:id',
+        builder: (_, state) =>
+            BookDetailPage(bookId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '${AppRoutes.books}/:id/drafts',
+        builder: (_, state) => DraftsReviewPage(
+          bookId: state.pathParameters['id']!,
+          batchId: state.uri.queryParameters['batch'],
+        ),
       ),
       // Deck-scoped pages live OUTSIDE the shell so the bottom nav doesn't
       // appear during a focused review session or form fill.
