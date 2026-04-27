@@ -60,6 +60,12 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Flashcard uses the camera to capture handwritten notes and book pages so it can generate flashcards from the image.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Flashcard reads photos you choose to generate flashcards from existing pictures.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>The camera plugin requests microphone access; Flashcard does not record audio.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
