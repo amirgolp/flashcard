@@ -31,7 +31,7 @@ dependencies:
 
   # Files, PDFs, images, camera
   file_picker: ^11.0.0
-  pdfx: ^2.9.0
+  pdfrx: ^2.2.24
   camera: ^0.12.0
   image_picker: ^1.2.0
   flutter_image_compress: ^2.4.0

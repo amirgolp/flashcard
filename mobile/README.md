@@ -76,11 +76,11 @@ Backend reachability:
 
 While `flutter run` is attached: press `r` for hot reload, `R` for hot restart, `q` to quit. Save any `.dart` file and the app updates in <1 s.
 
-> Mobile-only plugins (`flutter_appauth`, `camera`, `image_picker`, `pdfx`) throw `MissingPluginException` on web/desktop. Use Linux/Windows desktop for visual iteration on the deck and card UIs; use an Android emulator or physical device for end-to-end auth, PDF, and camera flows. Chrome is **not** a viable target for this app — drift + sqlite3_flutter_libs use `dart:ffi` which doesn't exist in browsers.
+> Mobile-only plugins (`flutter_appauth`, `camera`, `image_picker`) throw `MissingPluginException` on web/desktop. Use Linux/Windows desktop for visual iteration on the deck and card UIs; use an Android emulator or physical device for end-to-end auth and camera flows. PDF rendering uses `pdfrx`, which works on all desktop and mobile targets. Chrome is **not** a viable target for this app — drift + sqlite3_flutter_libs use `dart:ffi` which doesn't exist in browsers.
 
 ## Running on Linux desktop
 
-Drift, FFI, and most of the auth/UI surface compile cleanly on Linux desktop, so this is the fastest way to see the app without an emulator. Mobile-only plugins (camera, image_picker, pdfx, flutter_appauth) throw `MissingPluginException` if you exercise them — login form, deck CRUD, theme switcher, settings, and offline cache all work.
+Drift, FFI, and most of the auth/UI surface compile cleanly on Linux desktop, so this is the fastest way to see the app without an emulator. Mobile-only plugins (camera, image_picker, flutter_appauth) throw `MissingPluginException` if you exercise them — login form, deck CRUD, theme switcher, settings, offline cache, and PDF rendering all work.
 
 ### One-time system packages
 
@@ -154,7 +154,7 @@ set(CMAKE_INSTALL_PREFIX "${BUILD_BUNDLE_DIR}" CACHE PATH "" FORCE)
 
 **`MissingPluginException(No implementation found for method <X> on channel <Y>)` at runtime**
 
-You triggered a feature whose plugin doesn't have a Linux implementation. The list as of slice 8: `flutter_appauth` (OIDC), `camera`, `image_picker`, `pdfx`. Avoid those flows on desktop or use the Android emulator.
+You triggered a feature whose plugin doesn't have a Linux implementation. The list as of slice 8: `flutter_appauth` (OIDC), `camera`, `image_picker`. Avoid those flows on desktop or use the Android emulator. (PDF rendering via `pdfrx` works on Linux.)
 
 ## Day-to-day commands
 
