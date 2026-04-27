@@ -227,3 +227,100 @@ If the image is unreadable, return an empty flashcards list."""
     result = response_schema.model_validate_json(response.text)
     logger.info(f"Gemini generated {len(result.flashcards)} flashcards from image")
     return result
+
+
+def generate_flashcards_from_images(
+    images: list[tuple[bytes, str]],
+    num_cards: int = 10,
+    target_language: str = "the target language",
+    native_language: str = "English",
+    template=None,
+):
+    """Send a batch of images (typically rendered pages from a
+    device-stored PDF) to Gemini in a single call and return
+    structured flashcard data covering the whole batch.
+
+    `images` is a list of `(image_bytes, mime_type)` tuples. Order is
+    preserved in the prompt so the model treats them as consecutive
+    pages of the same source.
+    """
+    if not images:
+        raise ValueError("images must contain at least one entry")
+
+    client = _get_client()
+    model = _get_model()
+
+    if template:
+        prompt = (
+            "You are a content extraction assistant. Analyze the following "
+            f"{len(images)} image(s), which are consecutive pages from a "
+            "single source.\n\n"
+            f"Extract approximately {num_cards} flashcards based on the "
+            "visible material across all pages.\n\n"
+            f"{template.system_prompt or ''}\n\n"
+            "For each flashcard, provide the following fields:\n"
+        )
+        for field in template.fields:
+            prompt += f"- {field.name}: {field.description}\n"
+        prompt += "\nFocus on extracting high-quality, relevant content."
+
+        fields = {}
+        for f in template.fields:
+            if f.type == "list":
+                fields[f.name] = (list[str] if f.required else list[str] | None, ...)
+            else:
+                fields[f.name] = (str if f.required else str | None, ...)
+
+        DynamicFlashcard = create_model("DynamicFlashcard", **fields)
+        response_schema = create_model(
+            "DynamicGenerationResult",
+            flashcards=(list[DynamicFlashcard], ...),
+        )
+    else:
+        prompt = f"""You are a language learning assistant. Analyze the following {len(images)} image(s),
+which are consecutive pages from a {target_language} language learning textbook
+or notes.
+
+Extract approximately {num_cards} vocabulary words or phrases that would make good
+flashcards for a student learning {target_language}, drawing from all of the
+provided pages.
+
+For each word/phrase, provide:
+- front: the word/phrase in {target_language}
+- back: translation to {native_language}
+- examples: exactly 3 example sentences using the word in {target_language}, each with
+  its {native_language} translation. Format as a list of objects like: [{{"sentence": "...", "translation": "..."}}]
+- synonyms: up to 3 synonyms in {target_language} (empty list if none applicable)
+- antonyms: up to 3 antonyms in {target_language} (empty list if none applicable)
+- part_of_speech: the grammatical category (noun, verb, adjective, adverb, etc.)
+- gender: grammatical gender if applicable to {target_language} (null if not applicable)
+- plural_form: the plural form if applicable (null if not applicable)
+- pronunciation: IPA pronunciation or phonetic guide
+- notes: any important usage notes, irregular forms, or cultural context
+
+Focus on the most useful and pedagogically valuable vocabulary visible across the pages.
+If the images are unreadable, return an empty flashcards list."""
+        response_schema = GeminiGenerationResult
+
+    contents = [
+        types.Part.from_bytes(data=img_bytes, mime_type=mime_type)
+        for img_bytes, mime_type in images
+    ]
+    contents.append(prompt)
+
+    response = client.models.generate_content(
+        model=model,
+        contents=contents,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=response_schema,
+            temperature=0.3,
+        ),
+    )
+
+    result = response_schema.model_validate_json(response.text)
+    logger.info(
+        f"Gemini generated {len(result.flashcards)} flashcards from "
+        f"{len(images)} batched images"
+    )
+    return result

@@ -191,6 +191,13 @@ class BookBase(BaseModel):
 
 
 class BookCreate(BookBase):
+    """Metadata-only book creation. Used by the mobile/desktop client
+    when the PDF stays on the device and the server only tracks
+    library metadata (title, page count, languages). The resulting
+    Book has storage_type='device' and no storage_file_id.
+    """
+    total_pages: int = Field(ge=1)
+    filename: str | None = None
     chapters: list[ChapterSchema] | None = None
 
 
@@ -311,6 +318,31 @@ class GenerateFromImageRequest(BaseModel):
     num_cards: int = Field(default=10, ge=1, le=30)
     template_id: str | None = None
     source_page: int | None = None
+
+
+class ImagePart(BaseModel):
+    """One page rendered to a base64-encoded image. Multiple parts can
+    be batched into a single GenerateFromImagesRequest so the mobile
+    client can ask the server to extract cards from a page range
+    without uploading the PDF itself.
+    """
+
+    image_base64: str
+    mime_type: str = "image/jpeg"
+    source_page: int | None = None
+
+
+class GenerateFromImagesRequest(BaseModel):
+    """Batch image generation: the device-side client renders selected
+    PDF pages to JPEG, sends them as a list, and the server forwards
+    the whole batch to Gemini in a single call. Pairs with the
+    metadata-only book creation flow.
+    """
+
+    book_id: str
+    images: list[ImagePart] = Field(min_length=1, max_length=30)
+    num_cards: int = Field(default=10, ge=1, le=60)
+    template_id: str | None = None
 
 
 class GenerationResponse(BaseModel):

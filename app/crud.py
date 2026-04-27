@@ -9,6 +9,7 @@ from .models import (
 from .utils.gemini import (
     generate_flashcards_from_pdf,
     generate_flashcards_from_image,
+    generate_flashcards_from_images,
     extract_page_range_as_pdf,
     get_pdf_page_count,
 )
@@ -939,6 +940,211 @@ def _generate_and_store_drafts(
         drafts=[_draft_to_response(d) for d in drafts],
         pages_processed=schemas.PageRangeSchema(start=start_page, end=end_page),
         message=f"Generated {len(drafts)} flashcard drafts from pages {start_page}-{end_page}",
+    )
+
+
+# ---- Device-only book flow (mobile/desktop client owns the PDF) ----
+
+def create_book_metadata(
+    book_create: schemas.BookCreate,
+    db: str = "default",
+    owner: User = None,
+) -> schemas.BookResponse:
+    """Create a Book record without server-side PDF storage. The
+    caller (mobile/desktop client) keeps the PDF locally and tells
+    the server only the metadata it needs to anchor cards and
+    progress against.
+    """
+    if owner.file_count >= owner.max_files:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"File limit reached ({owner.max_files} files). "
+                "Delete some files or upgrade your plan."
+            ),
+        )
+
+    book = Book(
+        title=book_create.title,
+        filename=book_create.filename or book_create.title,
+        file_size_bytes=0,
+        total_pages=book_create.total_pages,
+        storage_type='device',
+        target_language=book_create.target_language,
+        native_language=book_create.native_language,
+        owner=owner,
+    )
+    if book_create.chapters:
+        book.chapters = [
+            Chapter(name=c.name, start_page=c.start_page, end_page=c.end_page)
+            for c in book_create.chapters
+        ]
+    book.save(using=db)
+
+    owner.file_count += 1
+    owner.save(using=db)
+
+    progress = BookProgress(book=book, owner=owner)
+    progress.save(using=db)
+
+    return schemas.BookResponse(
+        id=str(book.id),
+        title=book.title,
+        filename=book.filename,
+        total_pages=book.total_pages,
+        chapters=[
+            schemas.ChapterSchema(**c.to_mongo().to_dict())
+            for c in (book.chapters or [])
+        ],
+        target_language=book.target_language,
+        native_language=book.native_language,
+        date_created=book.date_created,
+        last_edited=book.last_edited,
+    )
+
+
+def generate_from_images(
+    book_id: str,
+    images: list[schemas.ImagePart],
+    num_cards: int,
+    template_id: str = None,
+    db: str = "default",
+    owner: User = None,
+) -> schemas.GenerationResponse:
+    """Batch image generation. Used by the device-only flow: the
+    client renders the selected PDF pages locally, sends them as a
+    list of base64 JPEGs, and the server forwards the whole batch to
+    Gemini in a single call. One DraftCard batch is produced for the
+    whole range.
+    """
+    import base64
+    import binascii
+
+    try:
+        book = Book.objects.using(db).get(id=ObjectId(book_id), owner=owner)
+    except Book.DoesNotExist:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    if not images:
+        raise HTTPException(status_code=400, detail="images must not be empty")
+
+    decoded: list[tuple[bytes, str]] = []
+    total_bytes = 0
+    for idx, part in enumerate(images):
+        try:
+            img_bytes = base64.b64decode(part.image_base64, validate=True)
+        except (binascii.Error, ValueError):
+            raise HTTPException(
+                status_code=400,
+                detail=f"images[{idx}].image_base64 is not valid base64",
+            )
+        total_bytes += len(img_bytes)
+        decoded.append((img_bytes, part.mime_type))
+
+    # 30 MB cap across the whole batch — generous for ~30 compressed
+    # JPEGs at <1 MB each, but still bounds the Gemini call size.
+    if total_bytes > 30 * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail="Batch exceeds the 30 MB total image limit",
+        )
+
+    template = None
+    if template_id:
+        try:
+            template = Template.objects.using(db).get(id=ObjectId(template_id))
+        except Template.DoesNotExist:
+            raise HTTPException(status_code=400, detail="Template not found")
+
+    result = generate_flashcards_from_images(
+        images=decoded,
+        num_cards=num_cards,
+        target_language=book.target_language or "the target language",
+        native_language=book.native_language or "English",
+        template=template,
+    )
+
+    pages = sorted({p.source_page for p in images if p.source_page is not None})
+    range_start = pages[0] if pages else 0
+    range_end = pages[-1] if pages else 0
+    tag_label = (
+        f"pages-{range_start}-{range_end}" if pages else "image-batch"
+    )
+
+    batch_id = str(uuid.uuid4())
+    drafts = []
+    for fc in result.flashcards:
+        if template:
+            fc_dict = fc.model_dump()
+            custom_fields = {f.name: fc_dict.get(f.name) for f in template.fields}
+            front_field = next(
+                (f.name for f in template.fields if f.show_on_front),
+                template.fields[0].name if template.fields else "front",
+            )
+            back_field = next(
+                (f.name for f in template.fields if not f.show_on_front),
+                template.fields[-1].name if template.fields else "back",
+            )
+            front_val = fc_dict.get(front_field)
+            back_val = fc_dict.get(back_field)
+            draft = DraftCard(
+                front=str(front_val) if front_val else "Template Generated Front",
+                back=str(back_val) if back_val else "Template Generated Back",
+                template_id=template,
+                custom_fields=custom_fields,
+                tags=[tag_label],
+                book=book,
+                source_page_start=range_start or None,
+                source_page_end=range_end or None,
+                generation_batch_id=batch_id,
+                owner=owner,
+            )
+        else:
+            draft = DraftCard(
+                front=fc.front,
+                back=fc.back,
+                examples=[
+                    ExampleSentence(
+                        sentence=ex.get("sentence", ""),
+                        translation=ex.get("translation", ""),
+                    )
+                    for ex in fc.examples
+                ],
+                synonyms=fc.synonyms,
+                antonyms=fc.antonyms,
+                part_of_speech=fc.part_of_speech,
+                gender=fc.gender,
+                plural_form=fc.plural_form,
+                pronunciation=fc.pronunciation,
+                notes=fc.notes,
+                tags=[tag_label],
+                book=book,
+                source_page_start=range_start or None,
+                source_page_end=range_end or None,
+                generation_batch_id=batch_id,
+                owner=owner,
+            )
+        draft.save(using=db)
+        drafts.append(draft)
+
+    if pages:
+        # Mark the contiguous span as processed; gaps inside the
+        # supplied page list are tolerated and treated as covered for
+        # progress purposes (progress is an advisory hint, not an
+        # exact log of which pages were OCR'd).
+        try:
+            add_processed_pages(str(book.id), range_start, range_end, db, owner)
+        except Exception:
+            pass
+
+    return schemas.GenerationResponse(
+        batch_id=batch_id,
+        drafts=[_draft_to_response(d) for d in drafts],
+        pages_processed=schemas.PageRangeSchema(start=range_start, end=range_end),
+        message=(
+            f"Generated {len(drafts)} flashcard drafts from "
+            f"{len(images)} image(s)"
+        ),
     )
 
 

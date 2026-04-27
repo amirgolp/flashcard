@@ -67,6 +67,28 @@ def generate_from_range(
     )
 
 
+@router.post("/from-images", response_model=schemas.GenerationResponse)
+def generate_from_images(
+    request: schemas.GenerateFromImagesRequest,
+    current_user: User = Depends(get_current_user),
+    db: str = Depends(get_db),
+):
+    """Batch image generation. Pairs with the device-only book flow:
+    the client renders a selected page range from its local PDF to
+    base64 JPEGs and posts them as a list. The server forwards the
+    whole batch to Gemini in a single call and returns one DraftCard
+    batch covering the range.
+    """
+    return crud.generate_from_images(
+        book_id=request.book_id,
+        images=request.images,
+        num_cards=request.num_cards,
+        template_id=request.template_id,
+        db=db,
+        owner=current_user,
+    )
+
+
 @router.post("/from-image", response_model=schemas.GenerationResponse)
 def generate_from_image(
     request: schemas.GenerateFromImageRequest,
