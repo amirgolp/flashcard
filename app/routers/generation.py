@@ -67,6 +67,46 @@ def generate_from_range(
     )
 
 
+@router.post("/from-image", response_model=schemas.GenerationResponse)
+def generate_from_image(
+    request: schemas.GenerateFromImageRequest,
+    current_user: User = Depends(get_current_user),
+    db: str = Depends(get_db),
+):
+    """Single-image generation. The mobile camera flow base64-encodes a
+    photo of a page (typed or handwritten), the backend hands it to
+    Gemini, and the resulting drafts are stored against the supplied
+    book just like from-range drafts.
+    """
+    import base64
+    import binascii
+
+    try:
+        image_bytes = base64.b64decode(request.image_base64, validate=True)
+    except (binascii.Error, ValueError):
+        raise HTTPException(
+            status_code=400, detail="image_base64 is not valid base64"
+        )
+
+    if len(image_bytes) > 10 * 1024 * 1024:
+        # 10 MB cap matches the PDF tier limit and keeps Gemini calls
+        # within reasonable bounds.
+        raise HTTPException(
+            status_code=413, detail="Image exceeds the 10 MB upload limit"
+        )
+
+    return crud.generate_from_image(
+        book_id=request.book_id,
+        image_bytes=image_bytes,
+        mime_type=request.mime_type,
+        num_cards=request.num_cards,
+        template_id=request.template_id,
+        source_page=request.source_page,
+        db=db,
+        owner=current_user,
+    )
+
+
 # ---- Draft Review Endpoints ----
 
 @router.get("/drafts", response_model=list[schemas.DraftCardResponse])
