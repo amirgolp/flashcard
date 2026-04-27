@@ -5,8 +5,12 @@ analyzer:
     - "**/*.g.dart"
     - "**/*.freezed.dart"
   language:
+    # strict-inference is disabled because riverpod's `ref.watch`/`ref.read`
+    # rely on inference through generic Provider types and the analyzer
+    # can't see through them; the warnings are noise, not real bugs.
+    # strict-casts and strict-raw-types still catch the dynamic mistakes
+    # that matter.
     strict-casts: true
-    strict-inference: true
     strict-raw-types: true
 
 linter:
