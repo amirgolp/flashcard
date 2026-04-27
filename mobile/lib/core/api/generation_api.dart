@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../shared/models/card.dart';
 import '../../shared/models/draft_card.dart';
 import '../../shared/models/generation.dart';
+import '../../shared/models/image_generation.dart';
 import '../../shared/models/json.dart';
 import 'api_client.dart';
 import 'api_exception.dart';
@@ -16,6 +17,21 @@ class GenerationApi {
     try {
       final response = await _client.dio.post<Object?>(
         '/generate/next-batch',
+        data: input.toJson(),
+      );
+      return decodeResponse(
+        response,
+        (data) => GenerationResponse.fromJson(data as JsonMap),
+      );
+    } on DioException catch (e) {
+      throw _toApi(e);
+    }
+  }
+
+  Future<GenerationResponse> fromImage(GenerateFromImageRequest input) async {
+    try {
+      final response = await _client.dio.post<Object?>(
+        '/generate/from-image',
         data: input.toJson(),
       );
       return decodeResponse(

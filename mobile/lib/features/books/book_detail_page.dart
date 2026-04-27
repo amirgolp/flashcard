@@ -118,6 +118,17 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
                         ? const Text('Generating…')
                         : const Text('Generate cards'),
                   ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _generating
+                        ? null
+                        : () => context.push(
+                              '${AppRoutes.books}/${book.id}/capture'
+                              '?page=$start',
+                            ),
+                    icon: const Icon(Icons.photo_camera_outlined),
+                    label: const Text('Capture page from camera'),
+                  ),
                   if (_lastBatchId != null) ...[
                     const SizedBox(height: 12),
                     OutlinedButton.icon(

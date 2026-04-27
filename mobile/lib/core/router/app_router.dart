@@ -14,6 +14,7 @@ import '../../features/decks/deck_detail_page.dart';
 import '../../features/decks/deck_form_page.dart';
 import '../../features/decks/decks_page.dart';
 import '../../features/generation/drafts_review_page.dart';
+import '../../features/generation/image_capture_page.dart';
 import '../../features/settings/settings_page.dart';
 import '../../features/shell/home_shell.dart';
 import '../auth/auth_controller.dart';
@@ -85,6 +86,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           bookId: state.pathParameters['id']!,
           batchId: state.uri.queryParameters['batch'],
         ),
+      ),
+      GoRoute(
+        path: '${AppRoutes.books}/:id/capture',
+        builder: (_, state) {
+          final pageRaw = state.uri.queryParameters['page'];
+          return ImageCapturePage(
+            bookId: state.pathParameters['id']!,
+            sourcePage: pageRaw == null ? null : int.tryParse(pageRaw),
+          );
+        },
       ),
       // Deck-scoped pages live OUTSIDE the shell so the bottom nav doesn't
       // appear during a focused review session or form fill.
