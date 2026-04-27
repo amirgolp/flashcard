@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/api/api_exception.dart';
 import '../../core/api/providers.dart';
+import '../../core/platform/media_capabilities.dart';
 import '../../core/router/app_router.dart';
 import '../../shared/models/image_generation.dart';
 import 'image_compression.dart';
@@ -93,8 +94,11 @@ class _ImageCapturePageState extends ConsumerState<ImageCapturePage> {
 
   @override
   Widget build(BuildContext context) {
+    final cameraAvailable = ref.watch(cameraAvailableProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Capture page')),
+      appBar: AppBar(
+        title: Text(cameraAvailable ? 'Capture page' : 'Pick page image'),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -105,28 +109,36 @@ class _ImageCapturePageState extends ConsumerState<ImageCapturePage> {
                 child: _PreviewArea(
                   preview: _preview,
                   filename: _filename,
+                  cameraAvailable: cameraAvailable,
                 ),
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _busy ? null : _pickFromCamera,
-                      icon: const Icon(Icons.photo_camera_outlined),
-                      label: const Text('Camera'),
+              if (cameraAvailable)
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _busy ? null : _pickFromCamera,
+                        icon: const Icon(Icons.photo_camera_outlined),
+                        label: const Text('Camera'),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _busy ? null : _pickFromGallery,
-                      icon: const Icon(Icons.photo_library_outlined),
-                      label: const Text('Gallery'),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _busy ? null : _pickFromGallery,
+                        icon: const Icon(Icons.photo_library_outlined),
+                        label: const Text('Gallery'),
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                )
+              else
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _pickFromGallery,
+                  icon: const Icon(Icons.image_outlined),
+                  label: const Text('Pick image'),
+                ),
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -177,10 +189,15 @@ class _ImageCapturePageState extends ConsumerState<ImageCapturePage> {
 }
 
 class _PreviewArea extends StatelessWidget {
-  const _PreviewArea({required this.preview, required this.filename});
+  const _PreviewArea({
+    required this.preview,
+    required this.filename,
+    required this.cameraAvailable,
+  });
 
   final Uint8List? preview;
   final String? filename;
+  final bool cameraAvailable;
 
   @override
   Widget build(BuildContext context) {
@@ -196,7 +213,9 @@ class _PreviewArea extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Text(
-            'Capture a photo of the page or pick one from the gallery.',
+            cameraAvailable
+                ? 'Capture a photo of the page or pick one from the gallery.'
+                : 'Pick an image of the page from your files.',
             textAlign: TextAlign.center,
             style: TextStyle(color: scheme.onSurfaceVariant),
           ),
