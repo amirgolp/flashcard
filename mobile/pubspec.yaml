@@ -44,6 +44,10 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
 
+  # Pulled in transitively, but we import its FlutterSecureStoragePlatform
+  # directly from tests to swap an in-memory backend.
+  flutter_secure_storage_platform_interface: ^2.0.0
+
   # Codegen for drift
   build_runner: ^2.14.0
   drift_dev: ^2.32.1

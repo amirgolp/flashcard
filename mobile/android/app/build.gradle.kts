@@ -28,6 +28,12 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Required by flutter_appauth: registers the redirect scheme
+        // `com.flashcard.mobile` so the OIDC callback intent is delivered
+        // to RedirectUriReceiverActivity. Must match the scheme of
+        // ZITADEL_REDIRECT_URI passed via --dart-define.
+        manifestPlaceholders["appAuthRedirectScheme"] = "com.flashcard.mobile"
     }
 
     buildTypes {
