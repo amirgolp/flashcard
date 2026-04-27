@@ -12,11 +12,38 @@ import 'local_book_store.dart';
 
 class BooksController extends AsyncNotifier<List<Book>> {
   @override
-  Future<List<Book>> build() async => ref.read(booksApiProvider).list();
+  Future<List<Book>> build() async => _loadWithDriftFallback();
 
   Future<void> refresh() async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => ref.read(booksApiProvider).list());
+    state = await AsyncValue.guard(_loadWithDriftFallback);
+  }
+
+  /// Fetches the canonical list from the server, falling back to the
+  /// drift-indexed Books table when the network is unavailable. Drift
+  /// rows carry only `id / title / total_pages / file_path` (the
+  /// fields the device-only register flow persists), so when offline
+  /// language/chapter/timestamp metadata are returned as their
+  /// defaults — enough for the user to navigate to a deck and
+  /// continue reviewing.
+  Future<List<Book>> _loadWithDriftFallback() async {
+    try {
+      return await ref.read(booksApiProvider).list();
+    } on Object {
+      final db = ref.read(appDatabaseProvider);
+      final rows = await db.select(db.books).get();
+      final epoch = DateTime.fromMillisecondsSinceEpoch(0);
+      return rows
+          .map((r) => Book(
+                id: r.id,
+                title: r.title,
+                filename: '',
+                totalPages: r.totalPages,
+                dateCreated: epoch,
+                lastEdited: epoch,
+              ))
+          .toList(growable: false);
+    }
   }
 
   /// Registers a book whose PDF lives on the device.

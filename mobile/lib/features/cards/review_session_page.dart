@@ -8,22 +8,7 @@ import '../../shared/models/card.dart' as model;
 import '../../shared/widgets/error_view.dart';
 import '../../shared/widgets/flip_card.dart';
 import '../../shared/widgets/hardness_badge.dart';
-import '../decks/decks_controller.dart';
-
-/// Resolves the card list for a deck. Tries the network first; on
-/// failure falls back to whatever the offline cache holds. Either way
-/// we trigger a queue drain so any past offline edits sync now.
-final _reviewCardsProvider = FutureProvider.autoDispose
-    .family<List<model.Card>, String>((ref, deckId) async {
-  final cache = ref.read(cardCacheServiceProvider);
-  await cache.drainPending();
-  try {
-    final deck = await ref.read(deckByIdProvider(deckId).future);
-    return deck.cards;
-  } on Object {
-    return cache.cachedForDeck(deckId);
-  }
-});
+import 'review_cards_provider.dart';
 
 class ReviewSessionPage extends ConsumerStatefulWidget {
   const ReviewSessionPage({required this.deckId, super.key});
@@ -71,14 +56,14 @@ class _ReviewSessionPageState extends ConsumerState<ReviewSessionPage> {
 
   @override
   Widget build(BuildContext context) {
-    final cardsAsync = ref.watch(_reviewCardsProvider(widget.deckId));
+    final cardsAsync = ref.watch(reviewCardsProvider(widget.deckId));
     return Scaffold(
       appBar: AppBar(title: const Text('Review')),
       body: cardsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorView(
           error: e,
-          onRetry: () => ref.invalidate(_reviewCardsProvider(widget.deckId)),
+          onRetry: () => ref.invalidate(reviewCardsProvider(widget.deckId)),
         ),
         data: (cards) {
           if (cards.isEmpty) {

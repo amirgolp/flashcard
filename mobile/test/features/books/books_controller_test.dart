@@ -107,4 +107,57 @@ void main() {
     expect(state, hasLength(1));
     expect(state.single.id, 'b2');
   });
+
+  test('build falls back to drift Books when the API is unreachable',
+      () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+    try {
+      await db.customSelect('SELECT 1').get();
+    } catch (e) {
+      markTestSkipped('native sqlite unavailable: $e');
+      return;
+    }
+
+    // Two books are sitting in drift from past device-only registers.
+    await db.into(db.books).insert(
+          BooksCompanion.insert(
+            id: 'local-1',
+            title: 'Cached A',
+            filePath: '/tmp/a.pdf',
+            totalPages: 12,
+          ),
+        );
+    await db.into(db.books).insert(
+          BooksCompanion.insert(
+            id: 'local-2',
+            title: 'Cached B',
+            filePath: '/tmp/b.pdf',
+            totalPages: 7,
+          ),
+        );
+
+    // The API errors with a connection failure (offline).
+    final stub = _Stub(
+      (options) => ResponseBody.fromString(
+        '',
+        503,
+        headers: {
+          'content-type': ['text/plain'],
+        },
+      ),
+    );
+
+    final container = _container(stub, db: db);
+    addTearDown(container.dispose);
+
+    final list = await container.read(booksControllerProvider.future);
+    expect(list, hasLength(2));
+    final ids = list.map((b) => b.id).toSet();
+    expect(ids, equals({'local-1', 'local-2'}));
+    final byId = {for (final b in list) b.id: b};
+    expect(byId['local-1']!.title, 'Cached A');
+    expect(byId['local-1']!.totalPages, 12);
+    expect(byId['local-2']!.totalPages, 7);
+  });
 }
