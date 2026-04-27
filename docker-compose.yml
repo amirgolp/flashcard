@@ -66,7 +66,13 @@ services:
   # Bootstrap admin credentials are printed once on first start — fish
   # them out with `docker-compose logs zitadel | grep zitadel-admin`.
   zitadel:
-    image: ghcr.io/zitadel/zitadel:latest
+    # Pinned to v3.4.1 — last release that ships the bundled login UI
+    # under /ui/login. Zitadel v4 split login into a separate Next.js
+    # service (ghcr.io/zitadel/login); using `:latest` left the v4
+    # console redirecting to /ui/v2/login/login which 404s without
+    # that extra service. Pinning v3 keeps dev compose to one Zitadel
+    # container.
+    image: ghcr.io/zitadel/zitadel:v3.4.1
     container_name: flashcard_zitadel
     restart: unless-stopped
     command: 'start-from-init --masterkey "MasterkeyNeedsToHave32Characters" --tlsMode disabled'
@@ -77,7 +83,6 @@ services:
       # mapping below. We use 8081 to avoid the common 8080 collision.
       ZITADEL_EXTERNALPORT: 8081
       ZITADEL_TLS_ENABLED: 'false'
-      # Zitadel v4 uses PostgreSQL (CockroachDB support was removed).
       ZITADEL_DATABASE_POSTGRES_HOST: zitadel_db
       ZITADEL_DATABASE_POSTGRES_PORT: 5432
       ZITADEL_DATABASE_POSTGRES_DATABASE: zitadel

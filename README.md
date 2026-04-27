@@ -70,8 +70,10 @@ docker-compose up -d zitadel_db zitadel
 ```
 
 - Console: [http://localhost:8081/ui/console](http://localhost:8081/ui/console)
+- Login: [http://localhost:8081/ui/login](http://localhost:8081/ui/login)
 - Discovery: `http://localhost:8081/.well-known/openid-configuration`
-- Backed by Postgres (Zitadel v4 dropped CockroachDB support).
+- Backed by Postgres.
+- **Pinned to `zitadel:v3.4.1`** — the last release that ships the bundled login UI under `/ui/login`. Zitadel v4 split the login UI into a separate Next.js service (`ghcr.io/zitadel/login`); on `:latest` the console redirects to `/ui/v2/login/login`, which 404s without that extra service. Pinning v3 keeps dev compose to a single Zitadel container.
 
 The host port is **8081** (not 8080) to dodge collisions; the issuer URL baked into tokens uses 8081 too. To wipe state and reset to a fresh instance: `docker-compose down -v` (drops all volumes including Mongo and Zitadel).
 
