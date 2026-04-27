@@ -7,6 +7,9 @@ import '../../features/auth/register_page.dart';
 import '../../features/auth/splash_page.dart';
 import '../../features/books/books_page.dart';
 import '../../features/cards/review_page.dart';
+import '../../features/cards/review_session_page.dart';
+import '../../features/decks/deck_detail_page.dart';
+import '../../features/decks/deck_form_page.dart';
 import '../../features/decks/decks_page.dart';
 import '../../features/settings/settings_page.dart';
 import '../../features/shell/home_shell.dart';
@@ -63,6 +66,33 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.register,
         builder: (_, __) => const RegisterPage(),
       ),
+      // Deck-scoped pages live OUTSIDE the shell so the bottom nav doesn't
+      // appear during a focused review session or form fill.
+      GoRoute(
+        path: '${AppRoutes.decks}/new',
+        builder: (_, __) => const DeckFormPage(),
+      ),
+      GoRoute(
+        path: '${AppRoutes.decks}/:id',
+        builder: (_, state) =>
+            DeckDetailPage(deckId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '${AppRoutes.decks}/:id/edit',
+        builder: (_, state) {
+          final extra = state.extra as Map<String, Object?>?;
+          return DeckFormPage(
+            deckId: state.pathParameters['id'],
+            initialName: extra?['name'] as String?,
+            initialDescription: extra?['description'] as String?,
+          );
+        },
+      ),
+      GoRoute(
+        path: '${AppRoutes.decks}/:id/review',
+        builder: (_, state) =>
+            ReviewSessionPage(deckId: state.pathParameters['id']!),
+      ),
       ShellRoute(
         builder: (context, state, child) => HomeShell(child: child),
         routes: [
@@ -92,7 +122,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   );
 });
 
-/// Bridges riverpod state changes to [GoRouter]'s `refreshListenable`.
 class _AuthRouterRefresh extends ChangeNotifier {
   _AuthRouterRefresh(this._ref) {
     _sub = _ref.listen<AuthState>(
