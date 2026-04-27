@@ -54,5 +54,66 @@ services:
     depends_on:
       - backend
 
+  # Local Zitadel for OIDC during development. Issued tokens carry
+  # `iss = http(s)://${ZITADEL_EXTERNAL_DOMAIN}:${ZITADEL_EXTERNAL_PORT}`,
+  # so the issuer must be reachable from whichever device/emulator the
+  # mobile app runs on:
+  #   - Browser / iOS simulator on the host: use `localhost`.
+  #   - Android emulator: export ZITADEL_EXTERNAL_DOMAIN=10.0.2.2 before
+  #     `docker-compose up`.
+  #   - Physical device on the same Wi-Fi: export the host's LAN IP.
+  #
+  # Bootstrap admin credentials are printed once on first start — fish
+  # them out with `docker-compose logs zitadel | grep zitadel-admin`.
+  zitadel:
+    image: ghcr.io/zitadel/zitadel:latest
+    container_name: flashcard_zitadel
+    restart: unless-stopped
+    command: 'start-from-init --masterkey "MasterkeyNeedsToHave32Characters" --tlsMode disabled'
+    environment:
+      ZITADEL_EXTERNALSECURE: 'false'
+      ZITADEL_EXTERNALDOMAIN: ${ZITADEL_EXTERNAL_DOMAIN:-localhost}
+      # Host port baked into the `iss` claim; must match the host-side
+      # mapping below. We use 8081 to avoid the common 8080 collision.
+      ZITADEL_EXTERNALPORT: 8081
+      ZITADEL_TLS_ENABLED: 'false'
+      # Zitadel v4 uses PostgreSQL (CockroachDB support was removed).
+      ZITADEL_DATABASE_POSTGRES_HOST: zitadel_db
+      ZITADEL_DATABASE_POSTGRES_PORT: 5432
+      ZITADEL_DATABASE_POSTGRES_DATABASE: zitadel
+      ZITADEL_DATABASE_POSTGRES_USER_USERNAME: zitadel
+      ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: zitadel_pw
+      ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE: disable
+      ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: postgres
+      ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: postgres_pw
+      ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE: disable
+    ports:
+      - "8081:8080"
+    depends_on:
+      zitadel_db:
+        condition: service_healthy
+
+  zitadel_db:
+    image: postgres:16-alpine
+    container_name: flashcard_zitadel_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_pw
+      POSTGRES_DB: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      # Loopback only — nothing on your LAN should be able to reach
+      # Zitadel's database. 5433 to avoid colliding with any local
+      # Postgres on 5432.
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - zitadel_db_data:/var/lib/postgresql/data
+
 volumes:
   mongodb_data:
+  zitadel_db_data:
