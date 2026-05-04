@@ -48,14 +48,14 @@ def configure_telegram(
                 detail="Invalid Telegram bot token"
             )
         
-        # Update user's storage config
-        if not current_user.storage_config:
-            current_user.storage_config = models.UserStorageConfig()
+        # # Update user's storage config
+        # if not current_user.storage_config:
+        #     current_user.storage_config = models.UserStorageConfig()
         
-        current_user.storage_config.storage_type = 'telegram'
-        current_user.storage_config.telegram_bot_token = config.bot_token
-        current_user.storage_config.telegram_user_id = config.user_id
-        current_user.save(using=db)
+        # current_user.storage_config.storage_type = 'telegram'
+        # current_user.storage_config.telegram_bot_token = config.bot_token
+        # current_user.storage_config.telegram_user_id = config.user_id
+        # current_user.save(using=db)
         
         return {
             "message": "Telegram storage configured successfully",
@@ -151,21 +151,21 @@ async def google_drive_oauth_callback(
         
         credentials = flow.credentials
         
-        # Store credentials
-        if not user.storage_config:
-            user.storage_config = models.UserStorageConfig()
+        # # Store credentials
+        # if not user.storage_config:
+        #     user.storage_config = models.UserStorageConfig()
         
-        user.storage_config.storage_type = 'google_drive'
-        user.storage_config.google_credentials = {
-            'token': credentials.token,
-            'refresh_token': credentials.refresh_token,
-            'token_uri': credentials.token_uri,
-            'client_id': credentials.client_id,
-            'client_secret': credentials.client_secret,
-            'scopes': credentials.scopes
-        }
-        user.storage_config.google_refresh_token = credentials.refresh_token
-        user.save(using=db)
+        # user.storage_config.storage_type = 'google_drive'
+        # user.storage_config.google_credentials = {
+        #     'token': credentials.token,
+        #     'refresh_token': credentials.refresh_token,
+        #     'token_uri': credentials.token_uri,
+        #     'client_id': credentials.client_id,
+        #     'client_secret': credentials.client_secret,
+        #     'scopes': credentials.scopes
+        # }
+        # user.storage_config.google_refresh_token = credentials.refresh_token
+        # user.save(using=db)
         
         # Redirect to frontend success page
         return RedirectResponse(url="http://localhost:5173/settings/storage?success=true")
@@ -177,28 +177,6 @@ async def google_drive_oauth_callback(
         )
 
 
-@router.get("/config", response_model=schemas.StorageConfigResponse)
-def get_storage_config(
-    db: str = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
-):
-    """
-    Get current user's storage configuration and quota information.
-    """
-    return schemas.StorageConfigResponse(
-        storage_type=current_user.storage_config.storage_type if current_user.storage_config else None,
-        is_configured=bool(current_user.storage_config and (
-            current_user.storage_config.telegram_bot_token or
-            current_user.storage_config.google_credentials
-        )),
-        quota=schemas.StorageQuota(
-            used_bytes=current_user.storage_used_bytes,
-            max_bytes=current_user.max_storage_bytes,
-            file_count=current_user.file_count,
-            max_files=current_user.max_files,
-            subscription_tier=current_user.subscription_tier
-        )
-    )
 
 
 @router.get("/quota", response_model=schemas.StorageQuota)
@@ -209,30 +187,9 @@ def get_storage_quota(
     Get storage quota information for the current user.
     """
     return schemas.StorageQuota(
-        used_bytes=current_user.storage_used_bytes,
-        max_bytes=current_user.max_storage_bytes,
-        file_count=current_user.file_count,
-        max_files=current_user.max_files,
+        # used_bytes=current_user.storage_used_bytes,
+        # max_bytes=current_user.max_storage_bytes,
+        # file_count=current_user.file_count,
+        # max_files=current_user.max_files,
         subscription_tier=current_user.subscription_tier
     )
-
-
-@router.post("/disconnect")
-def disconnect_storage(
-    db: str = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
-):
-    """
-    Disconnect current storage configuration.
-    Note: This doesn't delete files, only clears the configuration.
-    """
-    if current_user.file_count > 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot disconnect storage while you have uploaded files. Delete all files first."
-        )
-    
-    current_user.storage_config = None
-    current_user.save(using=db)
-    
-    return {"message": "Storage disconnected successfully"}

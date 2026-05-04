@@ -7,7 +7,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from ..utils.token import verify_token
 
-router = APIRouter(prefix="/generate", tags=["generation"])
+router = APIRouter(prefix="/generation", tags=["generation"])
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -139,3 +139,17 @@ def cleanup_rejected(
 ):
     count = crud.delete_rejected_drafts(book_id, db, owner=current_user)
     return {"detail": f"Deleted {count} rejected drafts"}
+
+
+
+@router.post("/from-content", response_model=schemas.GenerationResponse)
+def generate_from_content(
+    request: schemas.GenerateFromContentRequest,
+    current_user: User = Depends(get_current_user),
+    db: str = Depends(get_db),
+):
+    return crud.generate_from_content(
+        request=request,
+        db=db,
+        owner=current_user,
+    )

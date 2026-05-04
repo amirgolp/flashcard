@@ -310,22 +310,11 @@ class BulkApproveRequest(BaseModel):
     deck_id: str | None = None
 
 
-# Storage Configuration Schemas
-class TelegramStorageConfig(BaseModel):
-    bot_token: str
-    user_id: str
-
-
-class StorageQuota(BaseModel):
-    used_bytes: int
-    max_bytes: int
-    file_count: int
-    max_files: int
-    subscription_tier: str
-
-
-class StorageConfigResponse(BaseModel):
-    storage_type: str | None = None
-    is_configured: bool
-    quota: StorageQuota
-
+class GenerateFromContentRequest(BaseModel):
+    book_id: str
+    text: str | None = None
+    image_base64: str | None = None
+    page_start: int | None = None
+    page_end: int | None = None
+    num_cards: int = 10
+    template_id: str | None = None

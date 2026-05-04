@@ -1,5 +1,6 @@
 import io
 import uuid
+import base64
 from typing import List, Tuple, Optional
 from . import schemas
 from .models import (
@@ -11,6 +12,7 @@ from .utils.gemini import (
     extract_page_range_as_pdf,
     get_pdf_page_count,
 )
+from .utils.gemini import generate_flashcards_from_text, generate_flashcards_from_image, generate_flashcards_from_pdf
 from mongoengine import Q
 from bson import ObjectId
 from fastapi import HTTPException
@@ -720,27 +722,9 @@ def _generate_and_store_drafts(
             raise HTTPException(status_code=400, detail="Template not found")
 
     # 1. Read PDF from storage
-    if book.storage_type == 'gridfs' or (book.file and not book.storage_file_id):
+    if book.file:
         full_pdf_bytes = book.file.read()
     else:
-        from .utils.storage_adapter import get_storage_adapter
-        
-        if book.storage_type == 'telegram':
-            adapter = get_storage_adapter('telegram', {
-                'bot_token': book.owner.storage_config.telegram_bot_token
-            })
-        elif book.storage_type == 'google_drive':
-            adapter = get_storage_adapter('google_drive', {
-                'credentials': book.owner.storage_config.google_credentials
-            })
-        elif book.storage_type == 'app_drive':
-            adapter = get_storage_adapter('app_drive', {})
-        else:
-            raise HTTPException(status_code=500, detail=f"Unsupported storage type: {book.storage_type}")
-            
-        full_pdf_bytes = adapter.download_file(book.storage_file_id)
-
-    if not full_pdf_bytes:
         raise HTTPException(status_code=500, detail="Could not read book file content")
 
     pdf_bytes = extract_page_range_as_pdf(full_pdf_bytes, start_page, end_page)
@@ -758,10 +742,16 @@ def _generate_and_store_drafts(
     batch_id = str(uuid.uuid4())
     drafts = []
     for fc in result.flashcards:
+        # if the user selected a custom template, do the template-based logic
+        # otherwise use the normal default logic
         if template:
+            # it turns the Pydantic object into a normal Python dictionary.
             fc_dict = fc.model_dump()
             custom_fields = {f.name: fc_dict.get(f.name) for f in template.fields}
-            
+            # find the first one where show_on_front is True
+            # use that field’s name
+            # if none are marked, use the first template field
+            # if there are no fields at all, fall back to "front"
             front_field = next((f.name for f in template.fields if f.show_on_front), template.fields[0].name if template.fields else "front")
             back_field = next((f.name for f in template.fields if not f.show_on_front), template.fields[-1].name if template.fields else "back")
             
@@ -784,6 +774,11 @@ def _generate_and_store_drafts(
             draft = DraftCard(
                 front=fc.front,
                 back=fc.back,
+                # Gemini gives examples as dictionaries like:
+                # sentence
+                # translation
+                # But MongoEngine expects ExampleSentence objects.
+                # So this code changes each Gemini example into an ExampleSentence embedded document before saving.
                 examples=[
                     ExampleSentence(
                         sentence=ex.get('sentence', ''),
@@ -817,6 +812,159 @@ def _generate_and_store_drafts(
         pages_processed=schemas.PageRangeSchema(start=start_page, end=end_page),
         message=f"Generated {len(drafts)} flashcard drafts from pages {start_page}-{end_page}",
     )
+
+
+def generate_from_content(
+    request: schemas.GenerateFromContentRequest,
+    db: str = "default",
+    owner: User = None,
+) -> schemas.GenerationResponse:
+    try:
+        # 1. Validate input
+        has_text = bool(request.text and request.text.strip())
+        has_image = bool(request.image_base64 and request.image_base64.strip())
+
+        if not has_text and not has_image:
+            raise HTTPException(
+                status_code=400,
+                detail="Provide either text or image_base64",
+            )
+
+        if has_text and has_image:
+            raise HTTPException(
+                status_code=400,
+                detail="Provide only one of text or image_base64",
+            )
+
+        # 2. Load the book
+        book = Book.objects.using(db).get(
+            id=ObjectId(request.book_id),
+            owner=owner,
+        )
+
+        # 3. Load template if provided
+        template = None
+        if request.template_id:
+            try:
+                template = Template.objects.using(db).get(
+                    id=ObjectId(request.template_id)
+                )
+            except Template.DoesNotExist:
+                raise HTTPException(status_code=400, detail="Template not found")
+
+        # 4. Ask Gemini to generate flashcards
+        if has_text:
+            result = generate_flashcards_from_text(
+                text=request.text,
+                num_cards=request.num_cards,
+                target_language=book.target_language or "the target language",
+                native_language=book.native_language or "English",
+                template=template,
+            )
+        else:
+            image_bytes = base64.b64decode(request.image_base64)
+            result = generate_flashcards_from_image(
+                image_bytes=image_bytes,
+                num_cards=request.num_cards,
+                target_language=book.target_language or "the target language",
+                native_language=book.native_language or "English",
+                template=template,
+            )
+
+        # 5. Save drafts
+        batch_id = str(uuid.uuid4())
+        drafts = []
+
+        for fc in result.flashcards:
+            if template:
+                fc_dict = fc.model_dump()
+                custom_fields = {
+                    f.name: fc_dict.get(f.name) for f in template.fields
+                }
+
+                front_field = next(
+                    (f.name for f in template.fields if f.show_on_front),
+                    template.fields[0].name if template.fields else "front",
+                )
+                back_field = next(
+                    (f.name for f in template.fields if not f.show_on_front),
+                    template.fields[-1].name if template.fields else "back",
+                )
+
+                draft = DraftCard(
+                    front=str(fc_dict.get(front_field) or "Template Generated Front"),
+                    back=str(fc_dict.get(back_field) or "Template Generated Back"),
+                    template_id=template,
+                    custom_fields=custom_fields,
+                    tags=["content-generation"],
+                    book=book,
+                    source_page_start=request.page_start,
+                    source_page_end=request.page_end,
+                    generation_batch_id=batch_id,
+                    owner=owner,
+                )
+            else:
+                draft = DraftCard(
+                    front=fc.front,
+                    back=fc.back,
+                    examples=[
+                        ExampleSentence(
+                            sentence=ex.get("sentence", ""),
+                            translation=ex.get("translation", ""),
+                        )
+                        for ex in fc.examples
+                    ],
+                    synonyms=fc.synonyms,
+                    antonyms=fc.antonyms,
+                    part_of_speech=fc.part_of_speech,
+                    gender=fc.gender,
+                    plural_form=fc.plural_form,
+                    pronunciation=fc.pronunciation,
+                    notes=fc.notes,
+                    tags=["content-generation"],
+                    book=book,
+                    source_page_start=request.page_start,
+                    source_page_end=request.page_end,
+                    generation_batch_id=batch_id,
+                    owner=owner,
+                )
+
+            draft.save(using=db)
+            drafts.append(draft)
+
+        # 6. Optional progress update only if page info exists
+        if request.page_start is not None and request.page_end is not None:
+            add_processed_pages(
+                str(book.id),
+                request.page_start,
+                request.page_end,
+                db,
+                owner,
+            )
+            pages_processed = schemas.PageRangeSchema(
+                start=request.page_start,
+                end=request.page_end,
+            )
+        else:
+            pages_processed = schemas.PageRangeSchema(start=0, end=0)
+
+        return schemas.GenerationResponse(
+            batch_id=batch_id,
+            drafts=[_draft_to_response(d) for d in drafts],
+            pages_processed=pages_processed,
+            message=f"Generated {len(drafts)} flashcard drafts from provided content",
+        )
+
+    except Book.DoesNotExist:
+        raise HTTPException(status_code=404, detail="Book not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    #if it is already a valid HTTP error, keep it as-is
+    # only unexpected errors should become 500
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ---- Draft Review ----

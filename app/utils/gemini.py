@@ -69,71 +69,146 @@ def get_pdf_page_count(pdf_bytes: bytes) -> int:
     return len(reader.pages)
 
 
-def generate_flashcards_from_pdf(
-    pdf_bytes: bytes,
-    num_cards: int = 10,
-    target_language: str = "the target language",
-    native_language: str = "English",
+# def generate_flashcards_from_pdf(
+#     pdf_bytes: bytes,
+#     num_cards: int = 10,
+#     target_language: str = "the target language",
+#     native_language: str = "English",
+#     template=None,
+# ):
+#     """Send PDF page(s) to Gemini and return structured flashcard data."""
+#     client = _get_client()
+#     model = _get_model()
+
+#     if template:
+#         prompt = f"You are a content extraction assistant. Analyze the following PDF pages.\n\n"
+#         prompt += f"Extract approximately {num_cards} flashcards based on the provided material.\n\n"
+#         prompt += f"{template.system_prompt or ''}\n\n"
+#         prompt += "For each flashcard, provide the following fields:\n"
+        
+#         for field in template.fields:
+#             prompt += f"- {field.name}: {field.description}\n"
+            
+#         prompt += "\nFocus on extracting high-quality, relevant content."
+
+#         # Build dynamic pydantic schema
+#         fields = {}
+#         for f in template.fields:
+#             if f.type == "list":
+#                 fields[f.name] = (list[str] if f.required else list[str] | None, ...)
+#             else:
+#                 fields[f.name] = (str if f.required else str | None, ...)
+                
+#         DynamicFlashcard = create_model("DynamicFlashcard", **fields)
+#         response_schema = create_model("DynamicGenerationResult", flashcards=(list[DynamicFlashcard], ...))
+        
+#     else:
+#         prompt = f"""You are a language learning assistant. Analyze the following PDF pages
+# from a {target_language} language learning textbook.
+
+# Extract approximately {num_cards} vocabulary words or phrases that would make good
+# flashcards for a student learning {target_language}.
+
+# For each word/phrase, provide:
+# - front: the word/phrase in {target_language}
+# - back: translation to {native_language}
+# - examples: exactly 3 example sentences using the word in {target_language}, each with
+#   its {native_language} translation. Format as a list of objects like: [{{"sentence": "...", "translation": "..."}}]
+# - synonyms: up to 3 synonyms in {target_language} (empty list if none applicable)
+# - antonyms: up to 3 antonyms in {target_language} (empty list if none applicable)
+# - part_of_speech: the grammatical category (noun, verb, adjective, adverb, etc.)
+# - gender: grammatical gender if applicable to {target_language} (null if not applicable)
+# - plural_form: the plural form if applicable (null if not applicable)
+# - pronunciation: IPA pronunciation or phonetic guide
+# - notes: any important usage notes, irregular forms, or cultural context
+
+# Focus on the most useful and pedagogically valuable vocabulary from these pages."""
+#         response_schema = GeminiGenerationResult
+
+#     response = client.models.generate_content(
+#         model=model,
+#         contents=[
+#             types.Part.from_bytes(
+#                 data=pdf_bytes,
+#                 mime_type="application/pdf",
+#             ),
+#             prompt,
+#         ],
+#         config=types.GenerateContentConfig(
+#             response_mime_type="application/json",
+#             response_schema=response_schema,
+#             temperature=0.3,
+#         ),
+#     )
+
+#     result = response_schema.model_validate_json(response.text)
+#     logger.info(f"Gemini generated {len(result.flashcards)} flashcards")
+#     return result
+
+
+def _build_prompt_and_schema(
+    source_label: str,
+    num_cards: int,
+    target_language: str,
+    native_language: str,
     template=None,
 ):
-    """Send PDF page(s) to Gemini and return structured flashcard data."""
-    client = _get_client()
-    model = _get_model()
-
     if template:
-        prompt = f"You are a content extraction assistant. Analyze the following PDF pages.\n\n"
-        prompt += f"Extract approximately {num_cards} flashcards based on the provided material.\n\n"
-        prompt += f"{template.system_prompt or ''}\n\n"
-        prompt += "For each flashcard, provide the following fields:\n"
-        
+        prompt = (
+            f"You are a content extraction assistant. Analyze the provided {source_label}.\n\n"
+            f"Extract approximately {num_cards} flashcards based on the provided material.\n\n"
+            f"{template.system_prompt or ''}\n\n"
+            "For each flashcard, provide the following fields:\n"
+        )
+
         for field in template.fields:
             prompt += f"- {field.name}: {field.description}\n"
-            
+
         prompt += "\nFocus on extracting high-quality, relevant content."
 
-        # Build dynamic pydantic schema
         fields = {}
-        for f in template.fields:
-            if f.type == "list":
-                fields[f.name] = (list[str] if f.required else list[str] | None, ...)
+        for field in template.fields:
+            if field.type == "list":
+                fields[field.name] = (list[str] if field.required else list[str] | None,...)
             else:
-                fields[f.name] = (str if f.required else str | None, ...)
-                
-        DynamicFlashcard = create_model("DynamicFlashcard", **fields)
-        response_schema = create_model("DynamicGenerationResult", flashcards=(list[DynamicFlashcard], ...))
-        
-    else:
-        prompt = f"""You are a language learning assistant. Analyze the following PDF pages
-from a {target_language} language learning textbook.
+                fields[field.name] = (str if field.required else str | None,...)
+
+        dynamic_flashcard = create_model("DynamicFlashcard", **fields)
+        response_schema = create_model("DynamicGenerationResult",flashcards=(list[dynamic_flashcard], ...))
+        return prompt, response_schema
+
+    prompt = f"""You are a language learning assistant. Analyze the following {source_label}
+from a {target_language} learning source.
 
 Extract approximately {num_cards} vocabulary words or phrases that would make good
 flashcards for a student learning {target_language}.
 
-For each word/phrase, provide:
-- front: the word/phrase in {target_language}
+For each word or phrase, provide:
+- front: the word or phrase in {target_language}
 - back: translation to {native_language}
 - examples: exactly 3 example sentences using the word in {target_language}, each with
-  its {native_language} translation. Format as a list of objects like: [{{"sentence": "...", "translation": "..."}}]
+  its {native_language} translation. Format as a list of objects like:
+  [{{"sentence": "...", "translation": "..."}}]
 - synonyms: up to 3 synonyms in {target_language} (empty list if none applicable)
 - antonyms: up to 3 antonyms in {target_language} (empty list if none applicable)
-- part_of_speech: the grammatical category (noun, verb, adjective, adverb, etc.)
-- gender: grammatical gender if applicable to {target_language} (null if not applicable)
-- plural_form: the plural form if applicable (null if not applicable)
+- part_of_speech: the grammatical category
+- gender: grammatical gender if applicable, otherwise null
+- plural_form: plural form if applicable, otherwise null
 - pronunciation: IPA pronunciation or phonetic guide
-- notes: any important usage notes, irregular forms, or cultural context
+- notes: important usage notes, irregular forms, or context
 
-Focus on the most useful and pedagogically valuable vocabulary from these pages."""
-        response_schema = GeminiGenerationResult
+Focus on the most useful and pedagogically valuable vocabulary."""
+    return prompt, GeminiGenerationResult
+
+
+
+def _generate_flashcards_from_parts(parts, prompt: str, response_schema):
+    client = _get_client()
+    model = _get_model()
 
     response = client.models.generate_content(
         model=model,
-        contents=[
-            types.Part.from_bytes(
-                data=pdf_bytes,
-                mime_type="application/pdf",
-            ),
-            prompt,
-        ],
+        contents=[*parts, prompt],
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
             response_schema=response_schema,
@@ -144,3 +219,90 @@ Focus on the most useful and pedagogically valuable vocabulary from these pages.
     result = response_schema.model_validate_json(response.text)
     logger.info(f"Gemini generated {len(result.flashcards)} flashcards")
     return result
+
+
+
+def generate_flashcards_from_text(
+    text: str,
+    num_cards: int = 10,
+    target_language: str = "the target language",
+    native_language: str = "English",
+    template=None,
+):
+    if not text or not text.strip():
+        raise ValueError("Text content is required")
+
+    prompt, response_schema = _build_prompt_and_schema(
+        source_label="text content",
+        num_cards=num_cards,
+        target_language=target_language,
+        native_language=native_language,
+        template=template,
+    )
+
+    return _generate_flashcards_from_parts(
+        # take the Python string in text
+        # remove whitespace from the beginning and end with strip()
+        # wrap that cleaned string in a Gemini Part object
+        # so it can be sent to client.models.generate_content(...)
+        parts=[types.Part.from_text(text=text.strip())],
+        prompt=prompt,
+        response_schema=response_schema,
+    )
+
+
+def generate_flashcards_from_image(
+    image_bytes: bytes,
+    num_cards: int = 10,
+    target_language: str = "the target language",
+    native_language: str = "English",
+    template=None,
+):
+    if not image_bytes:
+        raise ValueError("Image content is required")
+
+    prompt, response_schema = _build_prompt_and_schema(
+        source_label="image content",
+        num_cards=num_cards,
+        target_language=target_language,
+        native_language=native_language,
+        template=template,
+    )
+
+    return _generate_flashcards_from_parts(
+        parts=[
+            types.Part.from_bytes(
+                data=image_bytes,
+                mime_type="image/png"
+            )
+        ],
+        prompt=prompt,
+        response_schema=response_schema,
+    )
+
+
+def generate_flashcards_from_pdf(
+    pdf_bytes: bytes,
+    num_cards: int = 10,
+    target_language: str = "the target language",
+    native_language: str = "English",
+    template=None,
+):
+    prompt, response_schema = _build_prompt_and_schema(
+        source_label="PDF pages",
+        num_cards=num_cards,
+        target_language=target_language,
+        native_language=native_language,
+        template=template,
+    )
+
+    return _generate_flashcards_from_parts(
+        parts=[
+            types.Part.from_bytes(
+                data=pdf_bytes,
+                mime_type="application/pdf",
+            )
+        ],
+        prompt=prompt,
+        response_schema=response_schema,
+    )

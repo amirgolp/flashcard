@@ -55,12 +55,6 @@ class User(Document):
     hashed_password = StringField(required=True)
     date_created = DateTimeField(default=datetime.utcnow)
     
-    # Storage configuration and quotas
-    storage_config = EmbeddedDocumentField(UserStorageConfig)
-    storage_used_bytes = IntField(default=0)
-    file_count = IntField(default=0)
-    max_files = IntField(default=5)  # Free tier: 5 files
-    max_storage_bytes = IntField(default=10*1024*1024)  # Free tier: 10MB
     subscription_tier = StringField(default='free')  # 'free', 'basic', 'premium'
 
     meta = {"indexes": ["username", "email"]}
@@ -103,16 +97,8 @@ class Template(Document):
 
 class Book(Document):
     title = StringField(required=True)
-    filename = StringField(required=True)
-    file_size_bytes = IntField(default=0)  # Track file size for quota
     total_pages = IntField(required=True)
     chapters = EmbeddedDocumentListField(Chapter)
-    
-    # External storage (Telegram or Google Drive)
-    storage_file_id = StringField()  # Telegram file_id or Google Drive file_id
-    storage_type = StringField(choices=['telegram', 'google_drive', 'app_drive', 'gridfs'])
-    file = FileField(collection_name="books_fs")  # Legacy GridFS, will be deprecated
-    
     target_language = StringField()
     native_language = StringField()
     date_created = DateTimeField(default=datetime.utcnow)
