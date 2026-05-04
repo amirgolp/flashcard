@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from .routers import decks, cards, search, auth, books, generation, storage, templates
+from .routers import decks, cards, search, auth, books, generation, templates
 from .utils.logger import logger
 from .exceptions import http_exception_handler
 from fastapi.exceptions import RequestValidationError, HTTPException
@@ -46,7 +46,6 @@ app.include_router(cards.router)
 app.include_router(search.router)
 app.include_router(books.router)
 app.include_router(generation.router)
-app.include_router(storage.router)
 app.include_router(templates.router)
 
 

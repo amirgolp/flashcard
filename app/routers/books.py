@@ -6,7 +6,6 @@ from .. import schemas, models
 from ..database import get_db
 from ..models import User, Book
 from ..utils.token import get_current_user
-from ..utils.storage_adapter import get_storage_adapter, AppDriveStorageAdapter
 from ..utils.gemini import get_pdf_page_count
 
 router = APIRouter(prefix="/books", tags=["books"])
@@ -112,46 +111,20 @@ async def delete_book(
     current_user: User = Depends(get_current_user),
     db: str = Depends(get_db),
 ):
-    """
-    Delete a book and its associated file from storage.
-    Updates user's storage quota.
-    """
     from bson import ObjectId
+    from ..models import BookProgress, DraftCard
+
     book = Book.objects(id=ObjectId(book_id), owner=current_user).using(db).first()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
-    
-    file_size = book.file_size_bytes or 0
-    
+
     try:
-        # Delete from storage
-        if book.storage_type == 'gridfs' or (book.file and not book.storage_file_id):
-            pass  # Legacy GridFS - file deleted with book document
-        elif book.storage_file_id:
-            storage_type = book.storage_type
-            if storage_type == 'telegram':
-                adapter = get_storage_adapter('telegram', {
-                    'bot_token': current_user.storage_config.telegram_bot_token
-                })
-            elif storage_type == 'google_drive':
-                adapter = get_storage_adapter('google_drive', {
-                    'credentials': current_user.storage_config.google_credentials
-                })
-            elif storage_type == 'app_drive':
-                adapter = get_storage_adapter('app_drive', {})
-            else:
-                adapter = None
-            if adapter:
-                adapter.delete_file(book.storage_file_id)
+        if book.file:
+            book.file.delete()
 
-        # Delete book record (cascades to progress, draft cards, etc.)
+        BookProgress.objects(book=book, owner=current_user).using(db).delete()
+        DraftCard.objects(book=book, owner=current_user).using(db).delete()
         book.delete(using=db)
-
-        # Update user quota
-        if file_size > 0:
-            current_user.storage_used_bytes = max(0, current_user.storage_used_bytes - file_size)
-            current_user.file_count = max(0, current_user.file_count - 1)
-            current_user.save(using=db)
 
         return {"detail": "Book and associated data deleted successfully"}
 
@@ -159,6 +132,8 @@ async def delete_book(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
+
+
 
 
 # Progress endpoints remain the same

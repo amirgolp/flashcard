@@ -8,11 +8,12 @@ from .models import (
     Chapter, PageRange, ExampleSentence, Template, TemplateField
 )
 from .utils.gemini import (
-    generate_flashcards_from_pdf,
     extract_page_range_as_pdf,
     get_pdf_page_count,
+    generate_flashcards_from_text, 
+    generate_flashcards_from_image,
+    generate_flashcards_from_pdf
 )
-from .utils.gemini import generate_flashcards_from_text, generate_flashcards_from_image, generate_flashcards_from_pdf
 from mongoengine import Q
 from bson import ObjectId
 from fastapi import HTTPException

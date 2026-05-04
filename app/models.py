@@ -105,7 +105,7 @@ class Book(Document):
     last_edited = DateTimeField(default=datetime.utcnow)
     owner = ReferenceField(User, required=True, reverse_delete_rule=CASCADE)
 
-    meta = {"indexes": ["owner", "title", "storage_type"]}
+    meta = {"indexes": ["owner", "title"]}
 
     def clean(self):
         self.last_edited = datetime.utcnow()
