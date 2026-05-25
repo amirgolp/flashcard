@@ -50,12 +50,19 @@ class UserStorageConfig(EmbeddedDocument):
 
 
 class User(Document):
+    # IntField and StringField are MongoEngine field types. They define how attributes on a Document are stored and validated in MongoDB.
+    # StringField stores text values, like a username, email, or title. IntField stores integer numbers, like counts, limits, or byte totals.
     username = StringField(required=True, unique=True)
     email = StringField(required=True, unique=True)
     hashed_password = StringField(required=True)
     date_created = DateTimeField(default=datetime.utcnow)
-    
+
     subscription_tier = StringField(default='free')  # 'free', 'basic', 'premium'
+    storage_config = EmbeddedDocumentField(UserStorageConfig)
+    max_storage_bytes = IntField(default=100 * 1024 * 1024)
+    storage_used_bytes = IntField(default=0)
+    max_files = IntField(default=10)
+    file_count = IntField(default=0)
 
     meta = {"indexes": ["username", "email"]}
 
