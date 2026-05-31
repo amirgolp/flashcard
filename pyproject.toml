@@ -27,3 +27,4 @@ executor = { type = "simple" }
 [tool.poe.tasks]
 api = "uvicorn app.main:app --reload"
 gui = { shell = "cd gui && npm run dev" }
+test = "pytest"
