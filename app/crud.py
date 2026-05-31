@@ -8,6 +8,7 @@ from .models import (
 )
 from .utils.gemini import (
     generate_flashcards_from_pdf,
+    generate_flashcards_from_text,
     generate_flashcards_from_image,
     generate_flashcards_from_images,
     extract_page_range_as_pdf,
@@ -126,6 +127,25 @@ def _examples_to_embedded(examples_data):
         ExampleSentence(sentence=ex.sentence, translation=ex.translation)
         for ex in examples_data
     ]
+
+
+def _load_template_for_owner(template_id, db: str, owner: User):
+    """Load a template the caller is allowed to use, or None when no
+    template was requested.
+
+    A user may reference their own templates or any default template,
+    but never another user's private template — without the ownership
+    filter, passing someone else's template_id would leak that
+    template's fields and prompt into the generated drafts.
+    """
+    if not template_id:
+        return None
+    try:
+        return Template.objects.using(db).get(
+            Q(id=ObjectId(template_id)) & (Q(owner=owner) | Q(is_default=True))
+        )
+    except Template.DoesNotExist:
+        raise HTTPException(status_code=400, detail="Template not found")
 
 
 # ---- User CRUD ----
@@ -731,12 +751,7 @@ def generate_from_image(
     if not image_bytes:
         raise HTTPException(status_code=400, detail="image_bytes is empty")
 
-    template = None
-    if template_id:
-        try:
-            template = Template.objects.using(db).get(id=ObjectId(template_id))
-        except Template.DoesNotExist:
-            raise HTTPException(status_code=400, detail="Template not found")
+    template = _load_template_for_owner(template_id, db, owner)
 
     # Page range stored on the draft. When the client supplied a source
     # page (which is the typical case from the BookDetailPage capture
@@ -831,17 +846,187 @@ def generate_from_image(
     )
 
 
+def _persist_drafts(
+    book: Book,
+    flashcards,
+    template,
+    tag_label: str,
+    source_page_start: int | None,
+    source_page_end: int | None,
+    batch_id: str,
+    db: str,
+    owner: User,
+) -> list:
+    """Turn Gemini flashcards into stored DraftCard documents.
+
+    Shared by the content-generation flow so the template / default
+    field mapping lives in one place instead of being copied per
+    input type.
+    """
+    drafts = []
+    for fc in flashcards:
+        if template:
+            fc_dict = fc.model_dump()
+            custom_fields = {f.name: fc_dict.get(f.name) for f in template.fields}
+            front_field = next(
+                (f.name for f in template.fields if f.show_on_front),
+                template.fields[0].name if template.fields else "front",
+            )
+            back_field = next(
+                (f.name for f in template.fields if not f.show_on_front),
+                template.fields[-1].name if template.fields else "back",
+            )
+            front_val = fc_dict.get(front_field)
+            back_val = fc_dict.get(back_field)
+            draft = DraftCard(
+                front=str(front_val) if front_val else "Template Generated Front",
+                back=str(back_val) if back_val else "Template Generated Back",
+                template_id=template,
+                custom_fields=custom_fields,
+                tags=[tag_label],
+                book=book,
+                source_page_start=source_page_start,
+                source_page_end=source_page_end,
+                generation_batch_id=batch_id,
+                owner=owner,
+            )
+        else:
+            draft = DraftCard(
+                front=fc.front,
+                back=fc.back,
+                examples=[
+                    ExampleSentence(
+                        sentence=ex.get("sentence", ""),
+                        translation=ex.get("translation", ""),
+                    )
+                    for ex in fc.examples
+                ],
+                synonyms=fc.synonyms,
+                antonyms=fc.antonyms,
+                part_of_speech=fc.part_of_speech,
+                gender=fc.gender,
+                plural_form=fc.plural_form,
+                pronunciation=fc.pronunciation,
+                notes=fc.notes,
+                tags=[tag_label],
+                book=book,
+                source_page_start=source_page_start,
+                source_page_end=source_page_end,
+                generation_batch_id=batch_id,
+                owner=owner,
+            )
+        draft.save(using=db)
+        drafts.append(draft)
+    return drafts
+
+
+def generate_from_content(
+    request: schemas.GenerateFromContentRequest,
+    db: str = "default",
+    owner: User = None,
+) -> schemas.GenerationResponse:
+    """Generate drafts from a single text or image input attached to an
+    existing book. Exactly one of request.text / request.image_base64
+    must be supplied.
+    """
+    has_text = bool(request.text and request.text.strip())
+    has_image = bool(request.image_base64 and request.image_base64.strip())
+
+    if has_text == has_image:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide exactly one of text or image_base64",
+        )
+
+    try:
+        book = Book.objects.using(db).get(
+            id=ObjectId(request.book_id), owner=owner
+        )
+    except Book.DoesNotExist:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    template = _load_template_for_owner(request.template_id, db, owner)
+
+    if has_text:
+        result = generate_flashcards_from_text(
+            text=request.text,
+            num_cards=request.num_cards,
+            target_language=book.target_language or "the target language",
+            native_language=book.native_language or "English",
+            template=template,
+        )
+        tag_label = "text"
+    else:
+        import base64
+        import binascii
+
+        try:
+            image_bytes = base64.b64decode(request.image_base64, validate=True)
+        except (binascii.Error, ValueError):
+            raise HTTPException(
+                status_code=400, detail="image_base64 is not valid base64"
+            )
+
+        if len(image_bytes) > 10 * 1024 * 1024:
+            raise HTTPException(
+                status_code=413, detail="Image exceeds the 10 MB upload limit"
+            )
+
+        result = generate_flashcards_from_image(
+            image_bytes=image_bytes,
+            mime_type=request.mime_type,
+            num_cards=request.num_cards,
+            target_language=book.target_language or "the target language",
+            native_language=book.native_language or "English",
+            template=template,
+        )
+        tag_label = (
+            f"image-page-{request.source_page}"
+            if request.source_page is not None
+            else "image"
+        )
+
+    batch_id = str(uuid.uuid4())
+    drafts = _persist_drafts(
+        book=book,
+        flashcards=result.flashcards,
+        template=template,
+        tag_label=tag_label,
+        source_page_start=request.source_page,
+        source_page_end=request.source_page,
+        batch_id=batch_id,
+        db=db,
+        owner=owner,
+    )
+
+    if request.source_page is not None:
+        # Mark the source page processed so next-batch skips it. Progress
+        # tracking is best-effort — the drafts are already saved.
+        try:
+            add_processed_pages(
+                str(book.id), request.source_page, request.source_page, db, owner
+            )
+        except Exception:
+            pass
+
+    page_marker = request.source_page if request.source_page is not None else 0
+    return schemas.GenerationResponse(
+        batch_id=batch_id,
+        drafts=[_draft_to_response(d) for d in drafts],
+        pages_processed=schemas.PageRangeSchema(start=page_marker, end=page_marker),
+        message=(
+            f"Generated {len(drafts)} flashcard drafts "
+            f"from {'text' if has_text else 'image'}"
+        ),
+    )
+
+
 def _generate_and_store_drafts(
     book: Book, start_page: int, end_page: int, num_cards: int,
     db: str, owner: User, template_id: str = None,
 ) -> schemas.GenerationResponse:
     
-    template = None
-    if template_id:
-        try:
-            template = Template.objects.using(db).get(id=ObjectId(template_id))
-        except Template.DoesNotExist:
-            raise HTTPException(status_code=400, detail="Template not found")
+    template = _load_template_for_owner(template_id, db, owner)
 
     # 1. Read PDF from storage
     if book.storage_type == 'gridfs' or (book.file and not book.storage_file_id):
@@ -1049,12 +1234,7 @@ def generate_from_images(
             detail="Batch exceeds the 30 MB total image limit",
         )
 
-    template = None
-    if template_id:
-        try:
-            template = Template.objects.using(db).get(id=ObjectId(template_id))
-        except Template.DoesNotExist:
-            raise HTTPException(status_code=400, detail="Template not found")
+    template = _load_template_for_owner(template_id, db, owner)
 
     result = generate_flashcards_from_images(
         images=decoded,

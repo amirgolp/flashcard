@@ -129,6 +129,24 @@ def generate_from_image(
     )
 
 
+@router.post("/from-content", response_model=schemas.GenerationResponse)
+def generate_from_content(
+    request: schemas.GenerateFromContentRequest,
+    current_user: User = Depends(get_current_user),
+    db: str = Depends(get_db),
+):
+    """Unified single-input generation: accepts exactly one of `text`
+    or `image_base64` and attaches the drafts to an existing book. Base64
+    decoding, size limits, and the one-of validation are handled in the
+    crud layer.
+    """
+    return crud.generate_from_content(
+        request=request,
+        db=db,
+        owner=current_user,
+    )
+
+
 # ---- Draft Review Endpoints ----
 
 @router.get("/drafts", response_model=list[schemas.DraftCardResponse])

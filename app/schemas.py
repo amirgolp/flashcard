@@ -345,6 +345,23 @@ class GenerateFromImagesRequest(BaseModel):
     template_id: str | None = None
 
 
+class GenerateFromContentRequest(BaseModel):
+    """Unified single-input generation. Accepts exactly one of `text`
+    or `image_base64` and attaches the resulting drafts to an existing
+    book. Lets the client send typed/pasted text or a captured image
+    through one endpoint instead of picking between /from-image and a
+    text-only route.
+    """
+
+    book_id: str
+    text: str | None = None
+    image_base64: str | None = None
+    mime_type: str = "image/jpeg"
+    num_cards: int = Field(default=10, ge=1, le=30)
+    template_id: str | None = None
+    source_page: int | None = None
+
+
 class GenerationResponse(BaseModel):
     batch_id: str
     drafts: list[DraftCardResponse]
