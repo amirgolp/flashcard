@@ -10,7 +10,8 @@ import os
 from typing import Optional
 from .. import schemas, models
 from ..database import get_db
-from ..utils.token import get_current_user
+# from ..utils.token import get_current_user
+from ..dependencies import get_current_user
 from ..utils.storage_adapter import TelegramStorageAdapter
 
 router = APIRouter(prefix="/storage", tags=["storage"])

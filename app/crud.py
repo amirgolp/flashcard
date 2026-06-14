@@ -1279,3 +1279,23 @@ def delete_rejected_drafts(
         return count
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def get_user_by_zitadel_sub(zitadel_sub: str, db: str = "default") -> User | None:
+    """
+    Return the local user whose Zitadel subject matches the provided `sub` claim.
+
+    Parameters:
+        zitadel_sub (str):
+            The stable user identifier from the OIDC token's `sub` claim.
+        db (str):
+            The MongoEngine database alias to query against.
+
+    Returns:
+        User | None:
+            The matching user document if found, otherwise None.
+    """
+    try:
+        return User.objects(zitadel_sub=zitadel_sub).using(db).first()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

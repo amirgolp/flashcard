@@ -46,20 +46,20 @@ def verify_token(token: str, credentials_exception):
         raise credentials_exception
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: str = Depends(get_db)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    payload = verify_token(token, credentials_exception)
-    username: str = payload.get("sub")
-    if username is None:
-        raise credentials_exception
-    user = crud.get_user_by_username(username, db)
-    if user is None:
-        raise credentials_exception
-    return user
+# def get_current_user(token: str = Depends(oauth2_scheme), db: str = Depends(get_db)):
+#     credentials_exception = HTTPException(
+#         status_code=status.HTTP_401_UNAUTHORIZED,
+#         detail="Could not validate credentials",
+#         headers={"WWW-Authenticate": "Bearer"},
+#     )
+#     payload = verify_token(token, credentials_exception)
+#     username: str = payload.get("sub")
+#     if username is None:
+#         raise credentials_exception
+#     user = crud.get_user_by_username(username, db)
+#     if user is None:
+#         raise credentials_exception
+#     return user

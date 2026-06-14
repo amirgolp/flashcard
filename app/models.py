@@ -54,6 +54,11 @@ class User(Document):
     email = StringField(required=True, unique=True)
     hashed_password = StringField(required=True)
     date_created = DateTimeField(default=datetime.utcnow)
+    # unique=True means no two users can have the same Zitadel subject.
+    # sparse=True means MongoDB only enforces uniqueness for documents that actually have 
+    # a value there. This allows existing users without a linked Zitadel account
+    #  to remain valid
+    zitadel_sub = StringField(unique=True, sparse=True)
     
     # Storage configuration and quotas
     storage_config = EmbeddedDocumentField(UserStorageConfig)
@@ -63,7 +68,7 @@ class User(Document):
     max_storage_bytes = IntField(default=10*1024*1024)  # Free tier: 10MB
     subscription_tier = StringField(default='free')  # 'free', 'basic', 'premium'
 
-    meta = {"indexes": ["username", "email"]}
+    meta = {"indexes": ["username", "email", "zitadel_sub"]}
 
     def set_password(self, password: str):
         self.hashed_password = bcrypt.hashpw(
