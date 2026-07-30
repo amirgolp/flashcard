@@ -40,7 +40,7 @@ def shutdown_db_client():
     disconnect_db()
 
 
-# app.include_router(auth.router)
+app.include_router(auth.router)
 app.include_router(decks.router)
 app.include_router(cards.router)
 app.include_router(search.router)

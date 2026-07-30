@@ -17,9 +17,26 @@ from .models import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="unused-with-zitadel")
 
-ZITADEL_ISSUER_URL = os.getenv("ZITADEL_ISSUER_URL", "").rstrip("/")
-ZITADEL_AUDIENCE = os.getenv("ZITADEL_AUDIENCE", "")
+# We require certain environment variables to be set for Zitadel integration.
+# especially the issuer URL and audience in verifying oidc tokens
+def require_env(name: str) -> str:
+    """
+    Read an environment variable and raise an error at import time if missing.
+    
+    This enforces that the application cannot start without the required
+    Zitadel configuration. Failing at startup with a clear message is far
+    better than silently rejecting every authenticated request at runtime.
+    """
+    value =os.getenv(name)
+    if not value:
+        raise RuntimeError(f"Environment variable {name} is required but not set")
+    return value
 
+ZITADEL_ISSUER_URL = require_env("ZITADEL_ISSUER_URL").rstrip("/")
+ZITADEL_AUDIENCE = require_env("ZITADEL_AUDIENCE")
+
+
+# Caching for OpenID Connect discovery and JWKS
 _openid_config: dict[str, Any] | None = None
 _jwks: dict[str, Any] | None = None
 
@@ -38,37 +55,35 @@ def get_openid_config() -> dict[str, Any]:
     - the authorization endpoint
     - the token endpoint
     - the JWKS URI, which tells clients where to fetch public signing keys
-
-    Why this function exists:
-    - The backend should not hardcode all OIDC-related URLs.
-    - It should discover them dynamically from the issuer.
-    - The result is cached so the application does not make an HTTP request
-      on every authenticated API call.
-
-    Returns:
-        dict[str, Any]:
-            The parsed OpenID Connect discovery document returned by Zitadel.
-
-    Notes:
-        The issuer URL is normalized with `rstrip("/")` at module load time to
-        avoid mismatches caused by trailing slashes in environment variables.
     """
     global _openid_config
 
     if _openid_config is None:
-        if not ZITADEL_ISSUER_URL:
-            raise RuntimeError("ZITADEL_ISSUER_URL is not configured")
-
-        response = requests.get(
-            f"{ZITADEL_ISSUER_URL}/.well-known/openid-configuration",
-            timeout=5,
-        )
-        response.raise_for_status()
-        _openid_config = response.json()
+        # ZITADEL_ISSUER_URL is guaranteed to be set — validated at startup
+        # by require_env(). No need to check it here.
+        try:
+            response = requests.get(
+                f"{ZITADEL_ISSUER_URL}/.well-known/openid-configuration",
+                timeout=5,
+            )
+            response.raise_for_status()
+            _openid_config = response.json()
+        except requests.exceptions.RequestException as e:
+            # Zitadel is unreachable or returned an error.
+            # Raise 503 (Service Unavailable) instead of letting a raw
+            # network exception become an unhandled 500.
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service is unavailable. Please try again later.",
+            ) from e
 
     return _openid_config
 
 # A JWKS is a JSON list of public keys.
+# A JWKS, or JSON Web Key Set, is a JSON structure containing one or more
+# public keys. These public keys are used to verify JWT signatures created
+# by the identity provider's private key. In this application, the JWKS is
+# used to verify access tokens issued by Zitadel.
 # our backend does not usually get “the public key” as 
 # a simple password-looking string.
 # Instead it gets structured key data, often including:
@@ -77,7 +92,7 @@ def get_openid_config() -> dict[str, Any]:
 # n: modulus
 # e: exponent
 # algorithm metadata
-def get_jwks() -> dict[str, Any]:
+def get_jwks(force_refresh: bool = False) -> dict[str, Any]:
     """
     Return the JSON Web Key Set used to verify Zitadel-issued JWTs.
 
@@ -85,34 +100,30 @@ def get_jwks() -> dict[str, Any]:
     the OpenID Connect discovery document and caches it in the module-level
     `_jwks` variable.
 
-    A JWKS, or JSON Web Key Set, is a JSON structure containing one or more
-    public keys. These public keys are used to verify JWT signatures created
-    by the identity provider's private key. In this application, the JWKS is
-    used to verify access tokens issued by Zitadel.
-
-    Why this function exists:
+    workflow:
     - JWTs signed with RS256 must be verified with a public key.
     - The backend does not store Zitadel's private key.
     - Instead, it fetches the public keys published by Zitadel.
     - The result is cached so repeated authentication checks are fast.
-
-    Returns:
-        dict[str, Any]:
-            The parsed JWKS document, typically containing a `keys` list.
-
-    Notes:
-        This function depends on `get_openid_config()` to locate the correct
-        JWKS endpoint rather than hardcoding that URL.
     """
     global _jwks
 
-    if _jwks is None:
+    if _jwks is None or force_refresh:
         openid_config = get_openid_config()
         jwks_uri = openid_config["jwks_uri"]
 
-        response = requests.get(jwks_uri, timeout=5)
-        response.raise_for_status()
-        _jwks = response.json()
+        try:
+            response = requests.get(jwks_uri, timeout=5)
+            response.raise_for_status()
+            _jwks = response.json()
+        except requests.exceptions.RequestException as e:
+            # Zitadel's key endpoint is unreachable.
+            # Raise 503 so the caller receives a meaningful error instead
+            # of a raw network exception becoming an unhandled 500.
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service is unavailable. Please try again later.",
+            ) from e
 
     return _jwks
 
@@ -154,11 +165,6 @@ def verify_oidc_token(token: str) -> dict[str, Any]:
           algorithms.
         - Issuer and audience checks reduce the risk of accepting a token
           issued for a different service.
-
-    Notes:
-        If `ZITADEL_AUDIENCE` is empty, audience validation is effectively
-        disabled by the current implementation. In production systems,
-        validating audience is strongly recommended.
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -169,8 +175,6 @@ def verify_oidc_token(token: str) -> dict[str, Any]:
     try:
         unverified_header = jwt.get_unverified_header(token)
         kid = unverified_header.get("kid")
-        if not kid:
-            raise credentials_exception
 
         jwks = get_jwks()
         # look through the public keys
@@ -180,7 +184,17 @@ def verify_oidc_token(token: str) -> dict[str, Any]:
             (key for key in jwks.get("keys", []) if key.get("kid") == kid),
             None,
         )
+
         if signing_key is None:
+            # kid not in cache — Zitadel may have rotated its signing keys.
+            # Fetch a fresh JWKS once before rejecting the token.
+            jwks = get_jwks(force_refresh=True)
+            signing_key = next(
+                (key for key in jwks.get("keys", []) if key.get("kid") == kid),
+                None,
+            )
+
+        if not kid or signing_key is None:
             raise credentials_exception
 
         payload = jwt.decode(
@@ -188,7 +202,7 @@ def verify_oidc_token(token: str) -> dict[str, Any]:
             signing_key,
             algorithms=["RS256"],
             issuer=ZITADEL_ISSUER_URL,
-            audience=ZITADEL_AUDIENCE if ZITADEL_AUDIENCE else None,
+            audience=ZITADEL_AUDIENCE,
         )
         return payload
 

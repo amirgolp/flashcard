@@ -60,6 +60,18 @@ class TokenData(BaseModel):
     username: str | None = None
 
 
+# Zitadel linking schema
+class LinkZitadelRequest(BaseModel):
+    zitadel_access_token: str= Field(
+        ..., 
+        description="The access token obtained from Zitadel login"
+    )
+
+class LinkZitadelResponse(BaseModel):
+    message: str
+    username: str
+    zitadel_sub: str
+
 # Template Schemas
 class TemplateFieldSchema(BaseModel):
     name: str

@@ -4,6 +4,8 @@ from .. import schemas, crud
 from ..database import get_db
 from ..utils.token import create_access_token
 from datetime import timedelta
+from ..dependencies import get_current_user, verify_oidc_token
+from ..models import User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -34,3 +36,26 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: str = Depends(ge
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.post("/link-zitadel", response_model=schemas.LinkZitadelResponse)
+def link_zitadel(request:schemas.LinkZitadelRequest,
+                 current_user: User=Depends(get_current_user),
+                 db: str=Depends(get_db)
+                 ):
+    try:
+        #Extract the zitadel_sub from the verified token
+        payload=verify_oidc_token(request.zitadel_access_token)
+        zitadel_sub=payload.get("sub")
+    except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid Zitadel Token"
+            )
+    #Link the zitadel_sub to this user
+    updated_user=crud.link_zitadel_sub_to_user(current_user, zitadel_sub, db)
+    return schemas.LinkZitadelResponse(
+         message=f"Successfully linked Zitadel account to {updated_user.username}",
+         username=updated_user.username,
+         zitadel_sub=updated_user.zitadel_sub
+    )
