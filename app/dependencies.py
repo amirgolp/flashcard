@@ -146,25 +146,6 @@ def verify_oidc_token(token: str) -> dict[str, Any]:
     3. Load the JWKS and find the matching public key.
     4. Decode and verify the token with `python-jose`.
     5. Return the verified payload if all checks succeed.
-
-    Parameters:
-        token (str):
-            The raw JWT access token extracted from the `Authorization:
-            Bearer <token>` header.
-
-    Returns:
-        dict[str, Any]:
-            The decoded JWT payload, also called the token claims. This will
-            typically contain fields such as `sub`, `iss`, `aud`, and `exp`.
-
-    Security notes:
-        - The function uses the token's `kid` header only to choose the correct
-          public key. The header is not trusted by itself.
-        - Trust is established only after signature verification succeeds.
-        - Restricting algorithms to `RS256` prevents accepting unexpected
-          algorithms.
-        - Issuer and audience checks reduce the risk of accepting a token
-          issued for a different service.
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -197,13 +178,12 @@ def verify_oidc_token(token: str) -> dict[str, Any]:
         if not kid or signing_key is None:
             raise credentials_exception
 
-        payload = jwt.decode(
-            token,
-            signing_key,
-            algorithms=["RS256"],
-            issuer=ZITADEL_ISSUER_URL,
-            audience=ZITADEL_AUDIENCE,
-        )
+        payload = jwt.decode(token,
+                             signing_key,
+                             algorithms=["RS256"],
+                             issuer=ZITADEL_ISSUER_URL,
+                             audience=ZITADEL_AUDIENCE,
+                             )
         return payload
 
     except JWTError:
@@ -226,33 +206,6 @@ def get_current_user(
     2. Application user mapping:
        Extract the Zitadel subject identifier from the verified token and use
        it to look up the corresponding local `User` document in MongoDB.
-
-    The `sub` claim, short for "subject", is the stable unique identifier for
-    the authenticated user in the identity provider. This application uses
-    that external identity to find the matching internal user record.
-
-    Parameters:
-        token (str):
-            The bearer token extracted automatically by FastAPI from the
-            incoming request's `Authorization` header.
-        db (str):
-            The database alias or database context provided by `get_db()`.
-
-    Returns:
-        User:
-            The local MongoDB `User` object associated with the authenticated
-            Zitadel subject.
-
-    Notes:
-        This function assumes the existence of `crud.get_user_by_zitadel_sub`.
-        If that CRUD helper or the `zitadel_sub` field does not yet exist in
-        the model layer, this function represents the intended target design
-        but will not work until those pieces are implemented.
-
-    Typical usage:
-        This function is meant to be injected into route handlers with
-        `Depends(get_current_user)`, allowing protected routes to receive the
-        authenticated local user automatically.
     """
     payload = verify_oidc_token(token)
 
@@ -266,10 +219,13 @@ def get_current_user(
 
     user = crud.get_user_by_zitadel_sub(zitadel_sub, db)
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
+        email = payload.get("email")
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Missing email claim",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        user=User(username=email, email=email, zitadel_sub=zitadel_sub)
+        user.save(using=db)
     return user

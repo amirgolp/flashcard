@@ -175,11 +175,14 @@ def authenticate_user(
 def link_zitadel_sub_to_user(user: User, 
                              zitadel_sub: str,
                              db: str = "default") -> User:
+    if not zitadel_sub:
+        raise HTTPException(status_code=400, detail="zitadel_sub cannot be empty")
     # Check if this zitadel_sub is already linked to another user
     # Because each zitadel_sub is unique and can only belong to one user
     existing_user = User.objects(zitadel_sub=zitadel_sub).using(db).first()
-    if existing_user and existing_user.id !=user.id:
-        raise HTTPException(status_code=400, detail="Zitadel sub is already linked to another user")
+    if existing_user and existing_user.id!=user.id:
+        raise HTTPException(status_code=400,
+                            detail="Zitadel sub is already linked to another user")
     # Update the user's zitadel_sub
     user.zitadel_sub=zitadel_sub
     user.save(using=db)

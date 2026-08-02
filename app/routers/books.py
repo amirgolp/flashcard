@@ -5,7 +5,6 @@ import io
 from .. import schemas, models, crud
 from ..database import get_db
 from ..models import User, Book
-# from ..utils.token import get_current_user
 from ..dependencies import get_current_user
 from ..utils.storage_adapter import get_storage_adapter, AppDriveStorageAdapter
 from ..utils.gemini import get_pdf_page_count
