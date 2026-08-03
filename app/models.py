@@ -70,6 +70,10 @@ class User(Document):
     max_storage_bytes = IntField(default=10*1024*1024)  # Free tier: 10MB
     subscription_tier = StringField(default='free')  # 'free', 'basic', 'premium'
 
+    # user limiations for card generation
+    monthly_generated_cards = IntField(default=0)
+    monthly_quota_reset_at = DateTimeField(default=datetime.utcnow)
+
     meta = {"indexes": ["username", "email", "zitadel_sub"]}
 
     def set_password(self, password: str):
