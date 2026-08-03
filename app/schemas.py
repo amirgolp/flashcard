@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from pydantic import BaseModel, Field, EmailStr, constr
+from pydantic import BaseModel, Field, EmailStr, constr, model_validator
 
 
 class HardnessLevel(str, Enum):
@@ -295,6 +295,24 @@ class GenerateNextBatchRequest(BaseModel):
     num_pages: int = Field(default=5, le=20)
     num_cards: int = 10
     template_id: str | None = None
+
+
+class GenerationRequest(BaseModel):
+    text: str | None = None
+    image_base64: str | None = None
+    mime_type: str = "image/jpeg"
+    template_id: str
+    book_id: str | None = None
+    page_start: int | None = None
+    page_end: int | None = None
+    num_cards: int = Field(default=10, ge=1, le=60)
+
+    @model_validator(mode="after")
+    def validate_source(self):
+        if bool(self.text) == bool(self.image_base64):
+            raise ValueError("Provide exactly one of text or image_base64")
+        # our function must give an object back
+        return self
 
 
 class GenerateFromRangeRequest(BaseModel):

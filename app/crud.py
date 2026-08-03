@@ -1,15 +1,22 @@
 import io
 import uuid
+from datetime import datetime
 from typing import List, Tuple, Optional
 from . import schemas
 from .models import (
     Deck, Card, User, Book, BookProgress, DraftCard,
     Chapter, PageRange, ExampleSentence, Template, TemplateField
 )
-from .utils.gemini import (
-    generate_flashcards_from_pdf,
-    generate_flashcards_from_image,
-    generate_flashcards_from_images,
+# from .utils.gemini import (
+#     generate_flashcards_from_pdf,
+#     generate_flashcards_from_image,
+#     generate_flashcards_from_images,
+#     extract_page_range_as_pdf,
+#     get_pdf_page_count,
+# )
+
+from .utils.llm_client import (
+    get_llm_client,
     extract_page_range_as_pdf,
     get_pdf_page_count,
 )
@@ -126,6 +133,57 @@ def _examples_to_embedded(examples_data):
         ExampleSentence(sentence=ex.sentence, translation=ex.translation)
         for ex in examples_data
     ]
+
+
+# ---- Quota Helpers ----
+def _get_monthly_card_limit(subscription_tier: str) -> int | None:
+    """Return monthly card generation limit for a subscription tier.
+    
+    Returns:
+        int: card limit for the tier
+        None: unlimited (premium tier)
+    """
+    if subscription_tier == "free":
+        return 50
+    elif subscription_tier == "basic":
+        return 500
+    elif subscription_tier == "premium":
+        return None  # Unlimited
+    return 50 # Default to free tier limit if unknown
+
+
+def _maybe_reset_monthly_quota(owner: User, db:str="default"):
+    """Check if month changed. If so, reset card counter and update timestamp.
+    
+    This is defensive programming: runs during requests as backup to scheduler.
+    The APScheduler job will do the reset on day 1 of each month,
+    but this fallback ensures quota works even if scheduler misses a run.
+    
+    Logic:
+    1. Get current time
+    2. Compare with user's last reset timestamp
+    3. If different month or year, reset counter and timestamp
+    4. Save to database
+    """
+    now = datetime.utcnow()
+    last_reset = owner.monthly_quota_reset_at or now
+    if now.year !=last_reset.year or now.month != last_reset.month:
+        owner.monthly_generated_cards =0
+        owner.monthly_quota_reset_at = now
+        owner.save(using=db)
+
+def _enforce_generation_quota(owner: User):
+    limit =_get_monthly_card_limit(owner.subscription_tier)
+
+    if limit is None:
+        return # no limit, allow request
+    
+    # check if user hit the ceiling
+    if owner.monthly_generated_cards >= limit:
+        raise HTTPException(
+            status_code= 429,
+            detail= f"Monthly flashcard generation quota exceeded. Limit: {limit} cards.",
+        )
 
 
 # ---- User CRUD ----
@@ -728,6 +786,9 @@ def generate_from_image(
     except Book.DoesNotExist:
         raise HTTPException(status_code=404, detail="Book not found")
 
+    _maybe_reset_monthly_quota(owner, db)
+    _enforce_generation_quota(owner)
+
     if not image_bytes:
         raise HTTPException(status_code=400, detail="image_bytes is empty")
 
@@ -745,7 +806,8 @@ def generate_from_image(
     start_page = source_page if source_page is not None else 0
     end_page = source_page if source_page is not None else 0
 
-    result = generate_flashcards_from_image(
+    llm = get_llm_client(owner.subscription_tier)
+    result = llm.generate_from_image(
         image_bytes=image_bytes,
         mime_type=mime_type,
         num_cards=num_cards,
@@ -823,6 +885,9 @@ def generate_from_image(
             # Progress tracking is non-fatal — the drafts were saved.
             pass
 
+    owner.monthly_generated_cards += len(drafts)
+    owner.save(using=db)
+    
     return schemas.GenerationResponse(
         batch_id=batch_id,
         drafts=[_draft_to_response(d) for d in drafts],
@@ -834,7 +899,9 @@ def generate_from_image(
 def _generate_and_store_drafts(
     book: Book, start_page: int, end_page: int, num_cards: int,
     db: str, owner: User, template_id: str = None,
-) -> schemas.GenerationResponse:
+) -> schemas.GenerationResponse:    
+    _maybe_reset_monthly_quota(owner, db)
+    _enforce_generation_quota(owner)
     
     template = None
     if template_id:
@@ -869,8 +936,8 @@ def _generate_and_store_drafts(
 
     pdf_bytes = extract_page_range_as_pdf(full_pdf_bytes, start_page, end_page)
 
-    # 2. Call Gemini
-    result = generate_flashcards_from_pdf(
+    llm=get_llm_client(owner.subscription_tier)
+    result = llm.generate_from_pdf(
         pdf_bytes=pdf_bytes,
         num_cards=num_cards,
         target_language=book.target_language or "the target language",
@@ -934,6 +1001,9 @@ def _generate_and_store_drafts(
 
     # 4. Update progress
     add_processed_pages(str(book.id), start_page, end_page, db, owner)
+
+    owner.monthly_generated_cards += len(drafts)
+    owner.save(using=db)
 
     return schemas.GenerationResponse(
         batch_id=batch_id,
@@ -1024,6 +1094,9 @@ def generate_from_images(
         book = Book.objects.using(db).get(id=ObjectId(book_id), owner=owner)
     except Book.DoesNotExist:
         raise HTTPException(status_code=404, detail="Book not found")
+    
+    _maybe_reset_monthly_quota(owner, db)
+    _enforce_generation_quota(owner)
 
     if not images:
         raise HTTPException(status_code=400, detail="images must not be empty")
@@ -1056,7 +1129,8 @@ def generate_from_images(
         except Template.DoesNotExist:
             raise HTTPException(status_code=400, detail="Template not found")
 
-    result = generate_flashcards_from_images(
+    llm = get_llm_client(owner.subscription_tier)
+    result = llm.generate_from_images(
         images=decoded,
         num_cards=num_cards,
         target_language=book.target_language or "the target language",
@@ -1136,6 +1210,9 @@ def generate_from_images(
             add_processed_pages(str(book.id), range_start, range_end, db, owner)
         except Exception:
             pass
+        
+    owner.monthly_generated_cards += len(drafts)
+    owner.save(using=db)
 
     return schemas.GenerationResponse(
         batch_id=batch_id,
@@ -1279,3 +1356,4 @@ def delete_rejected_drafts(
         return count
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
