@@ -5,14 +5,13 @@ import {
   useCallback,
   type ReactNode,
 } from 'react'
-import { login as apiLogin, register as apiRegister } from '../api/auth'
-import type { RegisterData } from '../types'
+import { userManager, assertOidcConfigured } from '../auth/oidc'
 
 interface AuthContextValue {
   token: string | null
   isAuthenticated: boolean
-  login: (username: string, password: string) => Promise<void>
-  register: (data: RegisterData) => Promise<void>
+  login: () => Promise<void>
+  completeLogin: () => Promise<void>
   logout: () => void
 }
 
@@ -23,28 +22,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.getItem('access_token'),
   )
 
-  const login = useCallback(async (username: string, password: string) => {
-    const result = await apiLogin(username, password)
-    localStorage.setItem('access_token', result.access_token)
-    setToken(result.access_token)
+  const login = useCallback(async () => {
+    assertOidcConfigured()
+    await userManager.signinRedirect()
   }, [])
 
-  const register = useCallback(
-    async (data: RegisterData) => {
-      await apiRegister(data)
-      await login(data.username, data.password)
-    },
-    [login],
-  )
+  // Called on the /callback route after Zitadel redirects back. The backend
+  // provisions the local user on the first authenticated request, so there
+  // is no separate registration step.
+  const completeLogin = useCallback(async () => {
+    const user = await userManager.signinCallback()
+    if (!user?.access_token) {
+      throw new Error('Zitadel did not return an access token')
+    }
+    localStorage.setItem('access_token', user.access_token)
+    setToken(user.access_token)
+  }, [])
 
   const logout = useCallback(() => {
     localStorage.removeItem('access_token')
     setToken(null)
+    void userManager.signoutRedirect().catch(() => {
+      window.location.href = '/login'
+    })
   }, [])
 
   return (
     <AuthContext.Provider
-      value={{ token, isAuthenticated: !!token, login, register, logout }}
+      value={{
+        token,
+        isAuthenticated: !!token,
+        login,
+        completeLogin,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -10,7 +10,7 @@ import ProtectedRoute from '../components/auth/ProtectedRoute'
 
 // Lazy load all page components
 const LoginPage = lazy(() => import('../pages/LoginPage'))
-const RegisterPage = lazy(() => import('../pages/RegisterPage'))
+const CallbackPage = lazy(() => import('../pages/CallbackPage'))
 const DashboardPage = lazy(() => import('../pages/DashboardPage'))
 const CardsListPage = lazy(() => import('../pages/CardsListPage'))
 const CardCreatePage = lazy(() => import('../pages/CardCreatePage'))
@@ -35,10 +35,11 @@ const loginRoute = createRoute({
   component: LoginPage,
 })
 
-const registerRoute = createRoute({
+// OIDC redirect target — Zitadel sends the authorization code here.
+const callbackRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/register',
-  component: RegisterPage,
+  path: '/callback',
+  component: CallbackPage,
 })
 
 // Authenticated layout route
@@ -151,7 +152,7 @@ const templatesRoute = createRoute({
 // Build route tree
 const routeTree = rootRoute.addChildren([
   loginRoute,
-  registerRoute,
+  callbackRoute,
   authLayoutRoute.addChildren([
     appLayoutRoute.addChildren([
       indexRoute,

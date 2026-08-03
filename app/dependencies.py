@@ -191,6 +191,30 @@ def verify_oidc_token(token: str) -> dict[str, Any]:
         raise credentials_exception
 
 
+def _fetch_email_from_userinfo(token: str) -> str | None:
+    """
+    Ask Zitadel's userinfo endpoint for the user's email.
+
+    Depending on the application's token settings, a JWT access token may not
+    carry the `email` claim even when the `email` scope was granted. The
+    userinfo endpoint always returns it, so this is used as a fallback during
+    first-login provisioning. Returns None if the endpoint is unavailable.
+    """
+    userinfo_endpoint = get_openid_config().get("userinfo_endpoint")
+    if not userinfo_endpoint:
+        return None
+    try:
+        response = requests.get(
+            userinfo_endpoint,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=5,
+        )
+        response.raise_for_status()
+        return response.json().get("email")
+    except requests.exceptions.RequestException:
+        return None
+
+
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: str = Depends(get_db),
@@ -222,7 +246,7 @@ def get_current_user(
     if user is not None:
         return user
 
-    email = payload.get("email")
+    email = payload.get("email") or _fetch_email_from_userinfo(token)
     if not email:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
