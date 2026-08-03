@@ -10,6 +10,7 @@ import requests
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
+from mongoengine.errors import NotUniqueError
 
 from . import crud
 from .database import get_db
@@ -218,14 +219,35 @@ def get_current_user(
         )
 
     user = crud.get_user_by_zitadel_sub(zitadel_sub, db)
-    if user is None:
-        email = payload.get("email")
-        if not email:
+    if user is not None:
+        return user
+
+    email = payload.get("email")
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing email claim",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # A user who registered before the Zitadel migration already has a local
+    # account keyed by email — link it instead of creating a duplicate, which
+    # would violate the unique email index.
+    user = crud.get_user_by_email(email, db)
+    if user is not None:
+        return crud.link_zitadel_sub_to_user(user, zitadel_sub, db)
+
+    # First login: provision a local user from the verified token claims.
+    try:
+        user = User(username=email, email=email, zitadel_sub=zitadel_sub)
+        user.save(using=db)
+    except NotUniqueError:
+        # Two concurrent first requests raced; the other one won.
+        user = crud.get_user_by_zitadel_sub(zitadel_sub, db)
+        if user is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Missing email claim",
+                detail="Could not validate credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        user=User(username=email, email=email, zitadel_sub=zitadel_sub)
-        user.save(using=db)
     return user
