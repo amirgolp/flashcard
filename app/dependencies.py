@@ -33,7 +33,7 @@ def require_env(name: str) -> str:
     return value
 
 ZITADEL_ISSUER_URL = require_env("ZITADEL_ISSUER_URL").rstrip("/")
-ZITADEL_AUDIENCE = require_env("ZITADEL_AUDIENCE")
+ZITADEL_AUDIENCE = os.getenv("ZITADEL_AUDIENCE")
 
 
 # Caching for OpenID Connect discovery and JWKS
