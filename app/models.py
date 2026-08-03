@@ -50,10 +50,17 @@ class UserStorageConfig(EmbeddedDocument):
 
 
 class User(Document):
-    username = StringField(required=True, unique=True)
-    email = StringField(required=True, unique=True)
-    hashed_password = StringField(required=True)
+    # Zitadel token doesn't have usernam and password
+    # We only use email and Zitadel subject for authentication
+    username = StringField(unique=True, sparse=True)
+    email = StringField(unique=True, sparse=True)
+    hashed_password = StringField(required=False)
     date_created = DateTimeField(default=datetime.utcnow)
+    # unique=True means no two users can have the same Zitadel subject.
+    # sparse=True means MongoDB only enforces uniqueness for documents that actually have 
+    # a value there. This allows existing users without a linked Zitadel account
+    # to remain valid
+    zitadel_sub = StringField(unique=True, sparse=True)
     
     # Storage configuration and quotas
     storage_config = EmbeddedDocumentField(UserStorageConfig)
@@ -67,7 +74,7 @@ class User(Document):
     monthly_generated_cards = IntField(default=0)
     monthly_quota_reset_at = DateTimeField(default=datetime.utcnow)
 
-    meta = {"indexes": ["username", "email"]}
+    meta = {"indexes": ["username", "email", "zitadel_sub"]}
 
     def set_password(self, password: str):
         self.hashed_password = bcrypt.hashpw(

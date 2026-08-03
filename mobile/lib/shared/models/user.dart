@@ -38,33 +38,3 @@ class User {
   @override
   int get hashCode => Object.hash(id, username, email, dateCreated);
 }
-
-class RegisterRequest {
-  const RegisterRequest({
-    required this.username,
-    required this.email,
-    required this.password,
-  });
-
-  final String username;
-  final String email;
-  final String password;
-
-  JsonMap toJson() => {
-        'username': username,
-        'email': email,
-        'password': password,
-      };
-}
-
-class AuthToken {
-  const AuthToken({required this.accessToken, required this.tokenType});
-
-  final String accessToken;
-  final String tokenType;
-
-  factory AuthToken.fromJson(JsonMap json) => AuthToken(
-        accessToken: json.req<String>('access_token'),
-        tokenType: json.req<String>('token_type'),
-      );
-}

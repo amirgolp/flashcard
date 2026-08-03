@@ -230,6 +230,23 @@ def authenticate_user(
     return user
 
 
+def link_zitadel_sub_to_user(user: User, 
+                             zitadel_sub: str,
+                             db: str = "default") -> User:
+    if not zitadel_sub:
+        raise HTTPException(status_code=400, detail="zitadel_sub cannot be empty")
+    # Check if this zitadel_sub is already linked to another user
+    # Because each zitadel_sub is unique and can only belong to one user
+    existing_user = User.objects(zitadel_sub=zitadel_sub).using(db).first()
+    if existing_user and existing_user.id!=user.id:
+        raise HTTPException(status_code=400,
+                            detail="Zitadel sub is already linked to another user")
+    # Update the user's zitadel_sub
+    user.zitadel_sub=zitadel_sub
+    user.save(using=db)
+    return user
+    
+
 # ---- Template CRUD ----
 
 def _template_to_response(template_doc: Template) -> schemas.TemplateResponse:
@@ -420,7 +437,8 @@ def update_deck(
 def delete_deck(deck_id: str, db: str = "default", owner: User = None) -> bool:
     try:
         deck_doc = Deck.objects.using(db).get(id=ObjectId(deck_id), owner=owner)
-        deck_doc.delete(using=db)
+        deck_doc.switch_db(db)
+        deck_doc.delete()
         return True
     except Deck.DoesNotExist:
         return False
@@ -514,7 +532,10 @@ def update_card(
 def delete_card(card_id: str, db: str = "default", owner: User = None) -> bool:
     try:
         card_doc = Card.objects.using(db).get(id=ObjectId(card_id), owner=owner)
-        card_doc.delete(using=db)
+        # Document.delete() has no `using` kwarg — unknown kwargs are passed
+        # to pymongo's WriteConcern and crash. switch_db() routes the delete.
+        card_doc.switch_db(db)
+        card_doc.delete()
         return True
     except Card.DoesNotExist:
         return False
@@ -651,7 +672,8 @@ def delete_book(book_id: str, db: str = "default", owner: User = None) -> bool:
         book.file.delete()
         BookProgress.objects(book=book, owner=owner).using(db).delete()
         DraftCard.objects(book=book, owner=owner).using(db).delete()
-        book.delete(using=db)
+        book.switch_db(db)
+        book.delete()
         return True
     except Book.DoesNotExist:
         return False
@@ -1357,3 +1379,22 @@ def delete_rejected_drafts(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+def get_user_by_zitadel_sub(zitadel_sub: str, db: str = "default") -> User | None:
+    """
+    Return the local user whose Zitadel subject matches the provided `sub` claim.
+
+    Parameters:
+        zitadel_sub (str):
+            The stable user identifier from the OIDC token's `sub` claim.
+        db (str):
+            The MongoEngine database alias to query against.
+
+    Returns:
+        User | None:
+            The matching user document if found, otherwise None.
+    """
+    try:
+        return User.objects(zitadel_sub=zitadel_sub).using(db).first()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

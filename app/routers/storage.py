@@ -2,15 +2,14 @@
 Storage configuration API endpoints.
 Allows users to configure Telegram or Google Drive for file storage.
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 import os
-from typing import Optional
 from .. import schemas, models
 from ..database import get_db
-from ..utils.token import get_current_user
+from ..dependencies import get_current_user
 from ..utils.storage_adapter import TelegramStorageAdapter
 
 router = APIRouter(prefix="/storage", tags=["storage"])

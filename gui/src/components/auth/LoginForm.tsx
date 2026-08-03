@@ -1,109 +1,54 @@
-import { useState, type FormEvent } from 'react'
-import {
-  Paper,
-  Stack,
-  TextField,
-  Button,
-  Alert,
-  Typography,
-  Link as MuiLink,
-} from '@mui/material'
-import { useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
+import { Alert, Button, Paper, Stack, Typography } from '@mui/material'
+import LoginIcon from '@mui/icons-material/Login'
 import { useAuth } from '../../context/AuthContext'
 
 export default function LoginForm() {
   const { login } = useAuth()
-  const navigate = useNavigate()
-
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+  const handleLogin = async () => {
     setError(null)
-    setLoading(true)
-
     try {
-      await login(username, password)
-      navigate({ to: '/dashboard' })
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message)
-      } else {
-        setError('Login failed. Please check your credentials and try again.')
-      }
-    } finally {
-      setLoading(false)
+      await login()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to start sign-in')
     }
   }
 
   return (
     <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
-      <form onSubmit={handleSubmit} noValidate>
-        <Stack spacing={3}>
-          <Typography
-            variant="h5"
-            component="h1"
-            textAlign="center"
-            fontWeight={600}
-          >
-            Log In
-          </Typography>
+      <Stack spacing={3}>
+        <Typography
+          variant="h5"
+          component="h1"
+          textAlign="center"
+          fontWeight={600}
+        >
+          Log In
+        </Typography>
 
-          {error && (
-            <Alert severity="error" onClose={() => setError(null)}>
-              {error}
-            </Alert>
-          )}
+        {error && (
+          <Alert severity="error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
 
-          <TextField
-            label="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-            fullWidth
-            autoComplete="username"
-            autoFocus
-            disabled={loading}
-          />
+        <Typography variant="body2" color="text.secondary" textAlign="center">
+          Sign in with your Zitadel account. New accounts are created
+          automatically on first sign-in.
+        </Typography>
 
-          <TextField
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            fullWidth
-            autoComplete="current-password"
-            disabled={loading}
-          />
-
-          <Button
-            type="submit"
-            variant="contained"
-            size="large"
-            fullWidth
-            disabled={loading || !username || !password}
-          >
-            {loading ? 'Logging in...' : 'Log In'}
-          </Button>
-
-          <Typography variant="body2" textAlign="center">
-            Don&apos;t have an account?{' '}
-            <MuiLink
-              component="button"
-              type="button"
-              variant="body2"
-              onClick={() => navigate({ to: '/register' })}
-              sx={{ cursor: 'pointer' }}
-            >
-              Register
-            </MuiLink>
-          </Typography>
-        </Stack>
-      </form>
+        <Button
+          variant="contained"
+          size="large"
+          fullWidth
+          startIcon={<LoginIcon />}
+          onClick={handleLogin}
+        >
+          Sign in with Zitadel
+        </Button>
+      </Stack>
     </Paper>
   )
 }

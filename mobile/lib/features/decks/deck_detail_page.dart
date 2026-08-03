@@ -23,6 +23,12 @@ class DeckDetailPage extends ConsumerWidget {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.add_card_outlined),
+            tooltip: 'Add card',
+            onPressed: () =>
+                context.push('${AppRoutes.decks}/$deckId/cards/new'),
+          ),
+          IconButton(
             icon: const Icon(Icons.edit_outlined),
             tooltip: 'Edit deck',
             onPressed: () => deckAsync.whenData(
@@ -44,7 +50,12 @@ class DeckDetailPage extends ConsumerWidget {
       ),
       floatingActionButton: deckAsync.maybeWhen(
         data: (deck) => deck.cards.isEmpty
-            ? null
+            ? FloatingActionButton.extended(
+                icon: const Icon(Icons.add),
+                label: const Text('Add card'),
+                onPressed: () =>
+                    context.push('${AppRoutes.decks}/$deckId/cards/new'),
+              )
             : FloatingActionButton.extended(
                 icon: const Icon(Icons.bolt),
                 label: const Text('Review'),

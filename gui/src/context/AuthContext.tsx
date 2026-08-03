@@ -5,46 +5,75 @@ import {
   useCallback,
   type ReactNode,
 } from 'react'
-import { login as apiLogin, register as apiRegister } from '../api/auth'
-import type { RegisterData } from '../types'
+import { userManager, assertOidcConfigured } from '../auth/oidc'
 
 interface AuthContextValue {
   token: string | null
   isAuthenticated: boolean
-  login: (username: string, password: string) => Promise<void>
-  register: (data: RegisterData) => Promise<void>
+  login: () => Promise<void>
+  completeLogin: () => Promise<void>
   logout: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(() =>
-    localStorage.getItem('access_token'),
-  )
+// Reject anything in storage that is not an unexpired JWT — e.g. tokens
+// left over from the pre-Zitadel username/password flow. Without this the
+// route guard treats any stored string as a session.
+function loadStoredToken(): string | null {
+  const token = localStorage.getItem('access_token')
+  if (!token) return null
+  try {
+    const payload = JSON.parse(
+      atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')),
+    )
+    if (typeof payload.exp === 'number' && payload.exp * 1000 > Date.now()) {
+      return token
+    }
+  } catch {
+    // not a decodable JWT — treat as stale
+  }
+  localStorage.removeItem('access_token')
+  return null
+}
 
-  const login = useCallback(async (username: string, password: string) => {
-    const result = await apiLogin(username, password)
-    localStorage.setItem('access_token', result.access_token)
-    setToken(result.access_token)
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [token, setToken] = useState<string | null>(loadStoredToken)
+
+  const login = useCallback(async () => {
+    assertOidcConfigured()
+    await userManager.signinRedirect()
   }, [])
 
-  const register = useCallback(
-    async (data: RegisterData) => {
-      await apiRegister(data)
-      await login(data.username, data.password)
-    },
-    [login],
-  )
+  // Called on the /callback route after Zitadel redirects back. The backend
+  // provisions the local user on the first authenticated request, so there
+  // is no separate registration step.
+  const completeLogin = useCallback(async () => {
+    const user = await userManager.signinCallback()
+    if (!user?.access_token) {
+      throw new Error('Zitadel did not return an access token')
+    }
+    localStorage.setItem('access_token', user.access_token)
+    setToken(user.access_token)
+  }, [])
 
   const logout = useCallback(() => {
     localStorage.removeItem('access_token')
     setToken(null)
+    void userManager.signoutRedirect().catch(() => {
+      window.location.href = '/login'
+    })
   }, [])
 
   return (
     <AuthContext.Provider
-      value={{ token, isAuthenticated: !!token, login, register, logout }}
+      value={{
+        token,
+        isAuthenticated: !!token,
+        login,
+        completeLogin,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>

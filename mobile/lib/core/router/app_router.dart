@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/login_page.dart';
-import '../../features/auth/register_page.dart';
 import '../../features/auth/splash_page.dart';
 import '../../features/books/book_detail_page.dart';
 import '../../features/books/book_upload_page.dart';
 import '../../features/books/books_page.dart';
+import '../../features/cards/card_form_page.dart';
 import '../../features/cards/review_page.dart';
 import '../../features/cards/review_session_page.dart';
 import '../../features/decks/deck_detail_page.dart';
@@ -24,7 +24,6 @@ class AppRoutes {
   AppRoutes._();
   static const splash = '/splash';
   static const login = '/login';
-  static const register = '/register';
   static const decks = '/decks';
   static const books = '/books';
   static const review = '/review';
@@ -43,8 +42,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final loc = state.matchedLocation;
 
       final atSplash = loc == AppRoutes.splash;
-      final atAuthPage =
-          loc == AppRoutes.login || loc == AppRoutes.register;
+      final atAuthPage = loc == AppRoutes.login;
 
       if (auth.status == AuthStatus.unknown) {
         return atSplash ? null : AppRoutes.splash;
@@ -65,10 +63,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.login,
         builder: (_, __) => const LoginPage(),
-      ),
-      GoRoute(
-        path: AppRoutes.register,
-        builder: (_, __) => const RegisterPage(),
       ),
       // Book-scoped pages live OUTSIDE the shell.
       GoRoute(
@@ -123,6 +117,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '${AppRoutes.decks}/:id/review',
         builder: (_, state) =>
             ReviewSessionPage(deckId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '${AppRoutes.decks}/:id/cards/new',
+        builder: (_, state) =>
+            CardFormPage(deckId: state.pathParameters['id']!),
       ),
       ShellRoute(
         builder: (context, state, child) => HomeShell(child: child),

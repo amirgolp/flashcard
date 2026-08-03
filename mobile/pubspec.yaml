@@ -5,7 +5,8 @@ version: 0.1.0+1
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
-  flutter: ">=3.24.0"
+  # Color.withValues requires 3.27+; CI pins 3.41.7.
+  flutter: ">=3.27.0"
 
 dependencies:
   flutter:
