@@ -3,22 +3,23 @@ import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 import Paper from '@mui/material/Paper'
-import Grid from '@mui/material/Grid'
 import Typography from '@mui/material/Typography'
 import IconButton from '@mui/material/IconButton'
 import Autocomplete from '@mui/material/Autocomplete'
 import Chip from '@mui/material/Chip'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import ToggleButton from '@mui/material/ToggleButton'
-import AddIcon from '@mui/icons-material/Add'
-import DeleteIcon from '@mui/icons-material/Delete'
-import Card from '@mui/material/Card'
-import CardContent from '@mui/material/CardContent'
 import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
+import Collapse from '@mui/material/Collapse'
+import ButtonBase from '@mui/material/ButtonBase'
+import AddIcon from '@mui/icons-material/Add'
+import DeleteIcon from '@mui/icons-material/Delete'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import { useQuery } from '@tanstack/react-query'
 import { listTemplates } from '../../api/templates'
+import CardPreview from './CardPreview'
 import type {
   CardCreate,
   HardnessLevel,
@@ -33,7 +34,73 @@ interface CardFormProps {
   submitLabel: string
 }
 
-const SECTION_SPACING = 3
+interface FormSectionProps {
+  title: string
+  summary?: string
+  defaultOpen?: boolean
+  action?: React.ReactNode
+  children: React.ReactNode
+}
+
+// Collapsible section — optional fields stay out of the way until needed.
+function FormSection({
+  title,
+  summary,
+  defaultOpen = false,
+  action,
+  children,
+}: FormSectionProps) {
+  const [open, setOpen] = useState(defaultOpen)
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: 3,
+        overflow: 'hidden',
+      }}
+    >
+      <Box display="flex" alignItems="center">
+        <ButtonBase
+          onClick={() => setOpen(!open)}
+          sx={{
+            flexGrow: 1,
+            display: 'flex',
+            justifyContent: 'flex-start',
+            alignItems: 'center',
+            gap: 1,
+            px: 2.5,
+            py: 1.75,
+            textAlign: 'left',
+          }}
+        >
+          <ExpandMoreIcon
+            fontSize="small"
+            sx={{
+              color: 'text.secondary',
+              transition: 'transform 0.2s',
+              transform: open ? 'rotate(0deg)' : 'rotate(-90deg)',
+            }}
+          />
+          <Typography fontWeight={600}>{title}</Typography>
+          {!open && summary && (
+            <Typography variant="body2" color="text.secondary" noWrap>
+              {summary}
+            </Typography>
+          )}
+        </ButtonBase>
+        {open && action && <Box pr={1.5}>{action}</Box>}
+      </Box>
+      <Collapse in={open}>
+        <Box px={2.5} pb={2.5}>
+          {children}
+        </Box>
+      </Collapse>
+    </Paper>
+  )
+}
 
 export default function CardForm({
   initialValues,
@@ -56,7 +123,9 @@ export default function CardForm({
     initialValues?.hardness_level ?? 'medium',
   )
   const [examples, setExamples] = useState<ExampleSentence[]>(
-    initialValues?.examples ?? [{ sentence: '', translation: '' }],
+    initialValues?.examples?.length
+      ? initialValues.examples
+      : [{ sentence: '', translation: '' }],
   )
   const [synonyms, setSynonyms] = useState<string[]>(
     initialValues?.synonyms ?? [],
@@ -68,7 +137,7 @@ export default function CardForm({
   const [templateId, setTemplateId] = useState<string | null>(
     initialValues?.template_id ?? null,
   )
-  const [customFields, setCustomFields] = useState<Record<string, any>>(
+  const [customFields, setCustomFields] = useState<Record<string, string>>(
     initialValues?.custom_fields ?? {},
   )
 
@@ -118,391 +187,365 @@ export default function CardForm({
     })
   }
 
+  const filledExamples = examples.filter((ex) => ex.sentence.trim()).length
+  const hasLinguistics = !!(partOfSpeech || gender || pluralForm || pronunciation)
+  const hasRelations = synonyms.length > 0 || antonyms.length > 0
+  const hasNotesOrTags = !!notes || tags.length > 0
+
   return (
-    <Box component="form" onSubmit={handleSubmit}>
-      <Stack spacing={SECTION_SPACING}>
-        <Card variant="outlined">
-          <CardContent>
-            <Typography variant="h6" gutterBottom color="primary">
-              Template Configuration
-            </Typography>
+    <Box
+      component="form"
+      onSubmit={handleSubmit}
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) 340px' },
+        gap: 4,
+        alignItems: 'start',
+        maxWidth: 1100,
+      }}
+    >
+      <Stack spacing={2}>
+        {/* Essentials — the only part most cards need. */}
+        <Paper
+          elevation={0}
+          sx={{
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 3,
+            p: 2.5,
+          }}
+        >
+          <Stack spacing={2.5}>
+            <TextField
+              fullWidth
+              required
+              autoFocus
+              label="Front"
+              value={front}
+              onChange={(e) => setFront(e.target.value)}
+              placeholder="Bonjour"
+              inputProps={{ style: { fontSize: '1.3rem', fontWeight: 600 } }}
+            />
+            <TextField
+              fullWidth
+              required
+              label="Back"
+              value={back}
+              onChange={(e) => setBack(e.target.value)}
+              multiline
+              minRows={2}
+              placeholder="Hello"
+            />
+            <Box
+              display="flex"
+              alignItems="center"
+              gap={2}
+              flexWrap="wrap"
+              justifyContent="space-between"
+            >
+              <ToggleButtonGroup
+                value={hardness}
+                exclusive
+                onChange={(_, v) => v && setHardness(v)}
+                size="small"
+                aria-label="hardness level"
+              >
+                <ToggleButton value="easy" color="success">
+                  Easy
+                </ToggleButton>
+                <ToggleButton value="medium" color="warning">
+                  Medium
+                </ToggleButton>
+                <ToggleButton value="hard" color="error">
+                  Hard
+                </ToggleButton>
+              </ToggleButtonGroup>
+              <Autocomplete
+                sx={{ minWidth: 220, flexGrow: 1, maxWidth: 320 }}
+                size="small"
+                options={templates ?? []}
+                loading={templatesLoading}
+                getOptionLabel={(option: TemplateResponse) => option.name}
+                value={selectedTemplate}
+                onChange={(_, value) => setTemplateId(value?.id ?? null)}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                renderInput={(params) => (
+                  <TextField {...params} label="Template (optional)" />
+                )}
+              />
+            </Box>
+          </Stack>
+        </Paper>
+
+        {selectedTemplate && selectedTemplate.fields.length > 0 && (
+          <FormSection title={`${selectedTemplate.name} fields`} defaultOpen>
+            <Stack spacing={2}>
+              {selectedTemplate.fields.map((field) => (
+                <TextField
+                  key={field.name}
+                  fullWidth
+                  required={field.required}
+                  label={field.label}
+                  value={customFields[field.name] || ''}
+                  onChange={(e) =>
+                    handleCustomFieldChange(field.name, e.target.value)
+                  }
+                  multiline={field.type === 'textarea'}
+                  minRows={field.type === 'textarea' ? 3 : 1}
+                  helperText={field.description}
+                />
+              ))}
+            </Stack>
+          </FormSection>
+        )}
+
+        <FormSection
+          title="Linguistic details"
+          summary={
+            hasLinguistics
+              ? [partOfSpeech, gender, pluralForm, pronunciation]
+                  .filter(Boolean)
+                  .join(' · ')
+              : 'part of speech, gender, plural, pronunciation'
+          }
+          defaultOpen={hasLinguistics}
+        >
+          <Box
+            display="grid"
+            gap={2}
+            gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr' }}
+          >
             <Autocomplete
-              options={templates ?? []}
-              loading={templatesLoading}
-              getOptionLabel={(option: TemplateResponse) => option.name}
-              value={selectedTemplate}
-              onChange={(_, value) => setTemplateId(value?.id ?? null)}
-              isOptionEqualToValue={(option, value) => option.id === value.id}
+              freeSolo
+              options={[
+                'noun',
+                'verb',
+                'adjective',
+                'adverb',
+                'preposition',
+                'conjunction',
+                'interjection',
+              ]}
+              value={partOfSpeech}
+              onChange={(_, v) => setPartOfSpeech(v || '')}
               renderInput={(params) => (
                 <TextField
                   {...params}
-                  label="Select Template"
-                  placeholder="Optional: Choose a template for custom fields"
+                  label="Part of speech"
+                  placeholder="noun"
                 />
               )}
             />
-          </CardContent>
-        </Card>
+            <Autocomplete
+              freeSolo
+              options={['masculine', 'feminine', 'neuter']}
+              value={gender}
+              onChange={(_, v) => setGender(v || '')}
+              renderInput={(params) => (
+                <TextField {...params} label="Gender" placeholder="masculine" />
+              )}
+            />
+            <TextField
+              label="Plural form"
+              value={pluralForm}
+              onChange={(e) => setPluralForm(e.target.value)}
+              placeholder="chats"
+            />
+            <TextField
+              label="Pronunciation"
+              value={pronunciation}
+              onChange={(e) => setPronunciation(e.target.value)}
+              placeholder="/bɔ̃.ʒuʁ/"
+              InputProps={{
+                endAdornment: (
+                  <Tooltip title="International Phonetic Alphabet representation">
+                    <HelpOutlineIcon fontSize="small" color="action" />
+                  </Tooltip>
+                ),
+              }}
+            />
+          </Box>
+        </FormSection>
 
-        {selectedTemplate && selectedTemplate.fields.length > 0 && (
-          <Card variant="outlined">
-            <CardContent>
-              <Typography variant="h6" gutterBottom color="primary">
-                Custom Fields
-              </Typography>
-              <Grid container spacing={3}>
-                {selectedTemplate.fields.map((field) => (
-                  <Grid item xs={12} key={field.name}>
-                    <TextField
-                      fullWidth
-                      required={field.required}
-                      label={field.label}
-                      value={customFields[field.name] || ''}
-                      onChange={(e) =>
-                        handleCustomFieldChange(field.name, e.target.value)
-                      }
-                      multiline={field.type === 'textarea'}
-                      minRows={field.type === 'textarea' ? 3 : 1}
-                      helperText={field.description}
-                      variant="outlined"
-                    />
-                  </Grid>
-                ))}
-              </Grid>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Core Information */}
-        <Card variant="outlined">
-          <CardContent>
-            <Typography variant="h6" gutterBottom color="primary">
-              Core Information
-            </Typography>
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  required
-                  label="Front (Word/Phrase)"
-                  value={front}
-                  onChange={(e) => setFront(e.target.value)}
-                  placeholder="e.g., 'Bonjour'"
-                  helperText="The main term you want to learn."
-                  variant="outlined"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  required
-                  label="Back (Translation/Definition)"
-                  value={back}
-                  onChange={(e) => setBack(e.target.value)}
-                  multiline
-                  minRows={2}
-                  placeholder="e.g., 'Hello'"
-                  variant="outlined"
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Autocomplete
-                  freeSolo
-                  options={[
-                    'noun',
-                    'verb',
-                    'adjective',
-                    'adverb',
-                    'preposition',
-                    'conjunction',
-                    'interjection',
-                  ]}
-                  value={partOfSpeech}
-                  onChange={(_, v) => setPartOfSpeech(v || '')}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Part of Speech"
-                      placeholder="e.g., noun"
-                    />
-                  )}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <Typography variant="body2" color="text.secondary">
-                    Difficulty:
-                  </Typography>
-                  <ToggleButtonGroup
-                    value={hardness}
-                    exclusive
-                    onChange={(_, v) => v && setHardness(v)}
-                    size="small"
-                    aria-label="hardness level"
-                  >
-                    <ToggleButton value="easy" color="success">
-                      Easy
-                    </ToggleButton>
-                    <ToggleButton value="medium" color="warning">
-                      Medium
-                    </ToggleButton>
-                    <ToggleButton value="hard" color="error">
-                      Hard
-                    </ToggleButton>
-                  </ToggleButtonGroup>
-                </Box>
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
-
-        {/* Linguistic Details */}
-        <Card variant="outlined">
-          <CardContent>
-            <Typography variant="h6" gutterBottom color="primary">
-              Linguistic Details
-            </Typography>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
-                <Autocomplete
-                  freeSolo
-                  options={['masculine', 'feminine', 'neuter']}
-                  value={gender}
-                  onChange={(_, v) => setGender(v || '')}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Gender"
-                      placeholder="e.g., masculine"
-                    />
-                  )}
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <TextField
-                  fullWidth
-                  label="Plural Form"
-                  value={pluralForm}
-                  onChange={(e) => setPluralForm(e.target.value)}
-                  placeholder="e.g., chats"
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <TextField
-                  fullWidth
-                  label="Pronunciation"
-                  value={pronunciation}
-                  onChange={(e) => setPronunciation(e.target.value)}
-                  placeholder="IPA (e.g., /bɔ̃.ʒuʁ/)"
-                  InputProps={{
-                    endAdornment: (
-                      <Tooltip title="International Phonetic Alphabet representation">
-                        <HelpOutlineIcon fontSize="small" color="action" />
-                      </Tooltip>
-                    ),
-                  }}
-                />
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
-
-        {/* Examples */}
-        <Card variant="outlined">
-          <CardContent>
-            <Box
-              display="flex"
-              justifyContent="space-between"
-              alignItems="center"
-              mb={2}
+        <FormSection
+          title="Examples"
+          summary={
+            filledExamples > 0
+              ? `${filledExamples} added`
+              : 'sentences using the word'
+          }
+          defaultOpen={filledExamples > 0}
+          action={
+            <Button
+              startIcon={<AddIcon />}
+              onClick={() =>
+                setExamples([...examples, { sentence: '', translation: '' }])
+              }
+              disabled={examples.length >= 5}
+              size="small"
             >
-              <Typography variant="h6" color="primary">
-                Examples
-              </Typography>
-              <Button
-                startIcon={<AddIcon />}
-                onClick={() =>
-                  setExamples([...examples, { sentence: '', translation: '' }])
-                }
-                disabled={examples.length >= 5}
-                size="small"
-              >
-                Add Example
-              </Button>
-            </Box>
-            <Stack spacing={2}>
-              {examples.map((ex, i) => (
-                <Paper
-                  key={i}
-                  elevation={0}
-                  variant="outlined"
-                  sx={{ p: 2, bgcolor: 'background.default' }}
+              Add
+            </Button>
+          }
+        >
+          <Stack spacing={2}>
+            {examples.map((ex, i) => (
+              <Box key={i} display="flex" alignItems="flex-start" gap={1}>
+                <Box
+                  display="grid"
+                  gap={2}
+                  flexGrow={1}
+                  gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr' }}
                 >
-                  <Box display="flex" alignItems="flex-start" gap={2}>
-                    <Grid container spacing={2} flex={1}>
-                      <Grid item xs={12} md={6}>
-                        <TextField
-                          fullWidth
-                          label={`Sentence ${i + 1}`}
-                          value={ex.sentence}
-                          onChange={(e) =>
-                            handleExampleChange(i, 'sentence', e.target.value)
-                          }
-                          size="small"
-                          placeholder="Example sentence using the word"
-                        />
-                      </Grid>
-                      <Grid item xs={12} md={6}>
-                        <TextField
-                          fullWidth
-                          label={`Translation ${i + 1}`}
-                          value={ex.translation}
-                          onChange={(e) =>
-                            handleExampleChange(
-                              i,
-                              'translation',
-                              e.target.value,
-                            )
-                          }
-                          size="small"
-                          placeholder="Translation of the example"
-                        />
-                      </Grid>
-                    </Grid>
-                    <IconButton
-                      onClick={() =>
-                        setExamples(examples.filter((_, idx) => idx !== i))
-                      }
-                      disabled={examples.length <= 1}
-                      color="error"
-                      size="small"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Box>
-                </Paper>
-              ))}
-            </Stack>
-          </CardContent>
-        </Card>
+                  <TextField
+                    label={`Sentence ${i + 1}`}
+                    value={ex.sentence}
+                    onChange={(e) =>
+                      handleExampleChange(i, 'sentence', e.target.value)
+                    }
+                    size="small"
+                    placeholder="Example sentence using the word"
+                  />
+                  <TextField
+                    label="Translation"
+                    value={ex.translation}
+                    onChange={(e) =>
+                      handleExampleChange(i, 'translation', e.target.value)
+                    }
+                    size="small"
+                    placeholder="Its translation"
+                  />
+                </Box>
+                <IconButton
+                  onClick={() =>
+                    setExamples(examples.filter((_, idx) => idx !== i))
+                  }
+                  disabled={examples.length <= 1}
+                  size="small"
+                  sx={{ mt: 0.5 }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            ))}
+          </Stack>
+        </FormSection>
 
-        {/* Relationships */}
-        <Card variant="outlined">
-          <CardContent>
-            <Typography variant="h6" gutterBottom color="primary">
-              Relationships
-            </Typography>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <Autocomplete
-                  multiple
-                  freeSolo
-                  options={[]}
-                  value={synonyms}
-                  onChange={(_, v) => setSynonyms(v)}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        variant="outlined"
-                        label={option}
-                        size="small"
-                        {...getTagProps({ index })}
-                        key={index}
-                      />
-                    ))
-                  }
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Synonyms"
-                      placeholder="Type and press Enter"
-                      helperText="Words with similar meanings"
-                    />
-                  )}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Autocomplete
-                  multiple
-                  freeSolo
-                  options={[]}
-                  value={antonyms}
-                  onChange={(_, v) => setAntonyms(v)}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        variant="outlined"
-                        label={option}
-                        size="small"
-                        {...getTagProps({ index })}
-                        key={index}
-                      />
-                    ))
-                  }
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Antonyms"
-                      placeholder="Type and press Enter"
-                      helperText="Words with opposite meanings"
-                    />
-                  )}
-                />
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
-
-        {/* Metadata */}
-        <Card variant="outlined">
-          <CardContent>
-            <Typography variant="h6" gutterBottom color="primary">
-              Additional Notes & Tags
-            </Typography>
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <Autocomplete
-                  multiple
-                  freeSolo
-                  options={[]}
-                  value={tags}
-                  onChange={(_, v) => setTags(v)}
-                  renderTags={(value, getTagProps) =>
-                    value.map((option, index) => (
-                      <Chip
-                        variant="outlined"
-                        label={option}
-                        size="small"
-                        {...getTagProps({ index })}
-                        key={index}
-                      />
-                    ))
-                  }
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Tags"
-                      placeholder="Type and press Enter"
-                    />
-                  )}
-                />
-              </Grid>
-              <Grid item xs={12}>
+        <FormSection
+          title="Synonyms & antonyms"
+          summary={
+            hasRelations
+              ? [...synonyms, ...antonyms].slice(0, 4).join(', ')
+              : 'related words'
+          }
+          defaultOpen={hasRelations}
+        >
+          <Box
+            display="grid"
+            gap={2}
+            gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr' }}
+          >
+            <Autocomplete
+              multiple
+              freeSolo
+              options={[]}
+              value={synonyms}
+              onChange={(_, v) => setSynonyms(v)}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip
+                    variant="outlined"
+                    label={option}
+                    size="small"
+                    {...getTagProps({ index })}
+                    key={index}
+                  />
+                ))
+              }
+              renderInput={(params) => (
                 <TextField
-                  fullWidth
-                  label="Notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  multiline
-                  minRows={3}
-                  placeholder="Any extra context, usage notes, or mnemonic devices..."
+                  {...params}
+                  label="Synonyms"
+                  placeholder="Type and press Enter"
                 />
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
+              )}
+            />
+            <Autocomplete
+              multiple
+              freeSolo
+              options={[]}
+              value={antonyms}
+              onChange={(_, v) => setAntonyms(v)}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip
+                    variant="outlined"
+                    label={option}
+                    size="small"
+                    {...getTagProps({ index })}
+                    key={index}
+                  />
+                ))
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Antonyms"
+                  placeholder="Type and press Enter"
+                />
+              )}
+            />
+          </Box>
+        </FormSection>
 
-        <Box display="flex" justifyContent="flex-end" pt={2} pb={4}>
+        <FormSection
+          title="Tags & notes"
+          summary={
+            hasNotesOrTags
+              ? [tags.join(', '), notes && 'notes'].filter(Boolean).join(' · ')
+              : 'organization and mnemonics'
+          }
+          defaultOpen={hasNotesOrTags}
+        >
+          <Stack spacing={2}>
+            <Autocomplete
+              multiple
+              freeSolo
+              options={[]}
+              value={tags}
+              onChange={(_, v) => setTags(v)}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip
+                    variant="outlined"
+                    label={option}
+                    size="small"
+                    {...getTagProps({ index })}
+                    key={index}
+                  />
+                ))
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Tags"
+                  placeholder="Type and press Enter"
+                />
+              )}
+            />
+            <TextField
+              fullWidth
+              label="Notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              multiline
+              minRows={3}
+              placeholder="Extra context, usage notes, or mnemonic devices…"
+            />
+          </Stack>
+        </FormSection>
+
+        <Box display="flex" justifyContent="flex-end" pt={1} pb={4}>
           <Button
             type="submit"
             variant="contained"
@@ -510,10 +553,30 @@ export default function CardForm({
             disabled={isLoading || !front.trim() || !back.trim()}
             sx={{ px: 4, py: 1.5 }}
           >
-            {isLoading ? 'Saving...' : submitLabel}
+            {isLoading ? 'Saving…' : submitLabel}
           </Button>
         </Box>
       </Stack>
+
+      {/* Live preview — sticky beside the form on desktop, above it on mobile. */}
+      <Box
+        sx={{
+          order: { xs: -1, md: 0 },
+          position: { md: 'sticky' },
+          top: { md: 88 },
+        }}
+      >
+        <CardPreview
+          front={front}
+          back={back}
+          partOfSpeech={partOfSpeech}
+          gender={gender}
+          pronunciation={pronunciation}
+          examples={examples}
+          tags={tags}
+          hardness={hardness}
+        />
+      </Box>
     </Box>
   )
 }
