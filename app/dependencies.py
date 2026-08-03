@@ -34,7 +34,14 @@ def require_env(name: str) -> str:
     return value
 
 ZITADEL_ISSUER_URL = require_env("ZITADEL_ISSUER_URL").rstrip("/")
+
+# Comma-separated allowlist of audiences, so both the web app's and the
+# mobile (Native) app's Client IDs — or the shared project ID — validate:
+#   ZITADEL_AUDIENCE=384683001440698372,384700000000000001
 ZITADEL_AUDIENCE = os.getenv("ZITADEL_AUDIENCE")
+ZITADEL_AUDIENCES = frozenset(
+    a.strip() for a in (ZITADEL_AUDIENCE or "").split(",") if a.strip()
+)
 
 
 # Caching for OpenID Connect discovery and JWKS
@@ -179,16 +186,37 @@ def verify_oidc_token(token: str) -> dict[str, Any]:
         if not kid or signing_key is None:
             raise credentials_exception
 
+        # python-jose only accepts a single audience string, so audience is
+        # verified manually below against the configured allowlist.
         payload = jwt.decode(token,
                              signing_key,
                              algorithms=["RS256"],
                              issuer=ZITADEL_ISSUER_URL,
-                             audience=ZITADEL_AUDIENCE,
+                             options={"verify_aud": False},
                              )
+        if not _audience_allowed(payload):
+            raise credentials_exception
         return payload
 
     except JWTError:
         raise credentials_exception
+
+
+def _audience_allowed(payload: dict[str, Any]) -> bool:
+    """
+    Check the token's `aud` claim against the configured allowlist.
+
+    With no ZITADEL_AUDIENCE configured every audience passes (dev
+    convenience). Zitadel access tokens carry a list audience — the
+    requesting app's Client ID plus the project ID — so one overlapping
+    entry is sufficient.
+    """
+    if not ZITADEL_AUDIENCES:
+        return True
+    aud = payload.get("aud", [])
+    if isinstance(aud, str):
+        aud = [aud]
+    return bool(ZITADEL_AUDIENCES.intersection(aud))
 
 
 def _fetch_email_from_userinfo(token: str) -> str | None:
