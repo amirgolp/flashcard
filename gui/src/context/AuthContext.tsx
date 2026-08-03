@@ -17,10 +17,28 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+// Reject anything in storage that is not an unexpired JWT — e.g. tokens
+// left over from the pre-Zitadel username/password flow. Without this the
+// route guard treats any stored string as a session.
+function loadStoredToken(): string | null {
+  const token = localStorage.getItem('access_token')
+  if (!token) return null
+  try {
+    const payload = JSON.parse(
+      atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')),
+    )
+    if (typeof payload.exp === 'number' && payload.exp * 1000 > Date.now()) {
+      return token
+    }
+  } catch {
+    // not a decodable JWT — treat as stale
+  }
+  localStorage.removeItem('access_token')
+  return null
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(() =>
-    localStorage.getItem('access_token'),
-  )
+  const [token, setToken] = useState<string | null>(loadStoredToken)
 
   const login = useCallback(async () => {
     assertOidcConfigured()
