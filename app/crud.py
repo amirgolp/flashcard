@@ -437,7 +437,8 @@ def update_deck(
 def delete_deck(deck_id: str, db: str = "default", owner: User = None) -> bool:
     try:
         deck_doc = Deck.objects.using(db).get(id=ObjectId(deck_id), owner=owner)
-        deck_doc.delete(using=db)
+        deck_doc.switch_db(db)
+        deck_doc.delete()
         return True
     except Deck.DoesNotExist:
         return False
@@ -531,7 +532,10 @@ def update_card(
 def delete_card(card_id: str, db: str = "default", owner: User = None) -> bool:
     try:
         card_doc = Card.objects.using(db).get(id=ObjectId(card_id), owner=owner)
-        card_doc.delete(using=db)
+        # Document.delete() has no `using` kwarg — unknown kwargs are passed
+        # to pymongo's WriteConcern and crash. switch_db() routes the delete.
+        card_doc.switch_db(db)
+        card_doc.delete()
         return True
     except Card.DoesNotExist:
         return False
@@ -668,7 +672,8 @@ def delete_book(book_id: str, db: str = "default", owner: User = None) -> bool:
         book.file.delete()
         BookProgress.objects(book=book, owner=owner).using(db).delete()
         DraftCard.objects(book=book, owner=owner).using(db).delete()
-        book.delete(using=db)
+        book.switch_db(db)
+        book.delete()
         return True
     except Book.DoesNotExist:
         return False

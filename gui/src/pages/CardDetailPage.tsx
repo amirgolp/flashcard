@@ -65,18 +65,26 @@ export default function CardDetailPage() {
           <DialogContentText>
             Are you sure you want to delete this card? This cannot be undone.
           </DialogContentText>
+          {deleteCard.isError && (
+            <DialogContentText color="error" sx={{ mt: 1 }}>
+              {deleteCard.error instanceof Error
+                ? deleteCard.error.message
+                : 'Failed to delete the card. Please try again.'}
+            </DialogContentText>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
           <Button
             color="error"
+            disabled={deleteCard.isPending}
             onClick={() =>
               deleteCard.mutate(cardId, {
                 onSuccess: () => navigate({ to: '/cards' }),
               })
             }
           >
-            Delete
+            {deleteCard.isPending ? 'Deleting…' : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

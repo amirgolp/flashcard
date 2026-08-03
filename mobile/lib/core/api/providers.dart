@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/auth_service.dart';
 import '../auth/secure_token_store.dart';
 import 'api_client.dart';
-import 'auth_api.dart';
 import 'books_api.dart';
 import 'cards_api.dart';
 import 'decks_api.dart';
@@ -34,8 +33,6 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   );
 });
 
-final authApiProvider =
-    Provider<AuthApi>((ref) => AuthApi(ref.watch(apiClientProvider)));
 final decksApiProvider =
     Provider<DecksApi>((ref) => DecksApi(ref.watch(apiClientProvider)));
 final cardsApiProvider =

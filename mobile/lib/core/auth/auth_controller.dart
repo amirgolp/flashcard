@@ -1,8 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../shared/models/user.dart';
-import '../api/api_exception.dart';
-import '../api/auth_api.dart';
 import '../api/providers.dart';
 import '../api/token_store.dart';
 import '../db/card_cache_service.dart';
@@ -14,21 +12,15 @@ import 'oidc_session.dart';
 import 'secure_token_store.dart';
 
 /// Holds the [AuthState] for the running app and exposes the actions a
-/// UI page might invoke. Two paths share the same state machine:
-///
-/// 1. **Zitadel OIDC** — preferred; when [OidcConfig.isConfigured] the
-///    controller routes login/logout/refresh through [OidcAuthService].
-/// 2. **Username/password JWT** — fallback used when OIDC isn't
-///    configured (e.g. local dev against the FastAPI backend) and
-///    exercised by tests.
+/// UI page might invoke. Zitadel OIDC is the only identity path — the
+/// backend provisions local users on the first authenticated request, so
+/// there is no separate registration flow.
 class AuthController extends Notifier<AuthState> {
-  late AuthApi _authApi;
   late TokenStore _tokenStore;
   OidcAuthService? _oidc;
 
   @override
   AuthState build() {
-    _authApi = ref.read(authApiProvider);
     _tokenStore = ref.read(tokenStoreProvider);
     _oidc = ref.read(oidcAuthServiceProvider);
     return const AuthState.unknown();
@@ -96,40 +88,6 @@ class AuthController extends Notifier<AuthState> {
       state = AuthState.authenticated(_userFromOidc(session));
     } on Exception catch (e) {
       state = AuthState.unauthenticated(error: e.toString());
-    }
-  }
-
-  Future<void> login({
-    required String username,
-    required String password,
-  }) async {
-    state = const AuthState.authenticating();
-    try {
-      final token =
-          await _authApi.login(username: username, password: password);
-      await _tokenStore.save(accessToken: token.accessToken);
-      state = AuthState.authenticated(_placeholderUser(username));
-    } on ApiException catch (e) {
-      state = AuthState.unauthenticated(error: e.message);
-    }
-  }
-
-  Future<void> register({
-    required String username,
-    required String email,
-    required String password,
-  }) async {
-    state = const AuthState.authenticating();
-    try {
-      final user = await _authApi.register(
-        RegisterRequest(username: username, email: email, password: password),
-      );
-      final token =
-          await _authApi.login(username: username, password: password);
-      await _tokenStore.save(accessToken: token.accessToken);
-      state = AuthState.authenticated(user);
-    } on ApiException catch (e) {
-      state = AuthState.unauthenticated(error: e.message);
     }
   }
 

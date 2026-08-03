@@ -1,48 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
 import '../../core/auth/auth_state.dart';
 import '../../core/auth/oidc_config.dart';
-import '../../core/router/app_router.dart';
 
-class LoginPage extends ConsumerStatefulWidget {
+/// Zitadel is the only identity provider — there is no local
+/// username/password flow. Accounts are provisioned by the backend on the
+/// first authenticated request, so sign-in doubles as registration.
+class LoginPage extends ConsumerWidget {
   const LoginPage({super.key});
 
   @override
-  ConsumerState<LoginPage> createState() => _LoginPageState();
-}
-
-class _LoginPageState extends ConsumerState<LoginPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _username = TextEditingController();
-  final _password = TextEditingController();
-
-  @override
-  void dispose() {
-    _username.dispose();
-    _password.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submitPassword() async {
-    if (!_formKey.currentState!.validate()) return;
-    await ref.read(authControllerProvider.notifier).login(
-          username: _username.text.trim(),
-          password: _password.text,
-        );
-  }
-
-  Future<void> _submitOidc() async {
-    await ref.read(authControllerProvider.notifier).loginWithOidc();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
     final busy = auth.status == AuthStatus.authenticating;
     const oidc = OidcConfig.fromEnv;
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       body: SafeArea(
@@ -51,81 +25,67 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             constraints: const BoxConstraints(maxWidth: 420),
             child: Padding(
               padding: const EdgeInsets.all(24),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Welcome back',
-                      style: Theme.of(context).textTheme.headlineMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 32),
-                    if (oidc.isConfigured) ...[
-                      FilledButton.icon(
-                        onPressed: busy ? null : _submitOidc,
-                        icon: const Icon(Icons.shield_outlined),
-                        label: const Text('Sign in with Zitadel'),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    alignment: Alignment.center,
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: scheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(28),
                       ),
-                      const SizedBox(height: 16),
-                      const _OrDivider(),
-                      const SizedBox(height: 16),
-                    ],
-                    TextFormField(
-                      controller: _username,
-                      decoration: const InputDecoration(
-                        labelText: 'Username',
-                        prefixIcon: Icon(Icons.person_outline),
+                      child: Icon(
+                        Icons.style_outlined,
+                        size: 48,
+                        color: scheme.onPrimaryContainer,
                       ),
-                      autofillHints: const [AutofillHints.username],
-                      textInputAction: TextInputAction.next,
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Username is required'
-                          : null,
-                      enabled: !busy,
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _password,
-                      decoration: const InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon: Icon(Icons.lock_outline),
-                      ),
-                      obscureText: true,
-                      autofillHints: const [AutofillHints.password],
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _submitPassword(),
-                      validator: (v) => (v == null || v.isEmpty)
-                          ? 'Password is required'
-                          : null,
-                      enabled: !busy,
-                    ),
-                    if (auth.errorMessage != null) ...[
-                      const SizedBox(height: 16),
-                      _ErrorBanner(message: auth.errorMessage!),
-                    ],
-                    const SizedBox(height: 24),
-                    OutlinedButton(
-                      onPressed: busy ? null : _submitPassword,
-                      child: busy
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Log in with username'),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Flashcards',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Sign in with your Zitadel account.\n'
+                    'New accounts are created automatically.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  if (oidc.isConfigured)
+                    FilledButton.icon(
                       onPressed: busy
                           ? null
-                          : () => context.push(AppRoutes.register),
-                      child: const Text('Create an account'),
-                    ),
+                          : () => ref
+                              .read(authControllerProvider.notifier)
+                              .loginWithOidc(),
+                      icon: busy
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.shield_outlined),
+                      label: Text(busy ? 'Signing in…' : 'Sign in with Zitadel'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    )
+                  else
+                    const _ConfigMissingBanner(),
+                  if (auth.errorMessage != null) ...[
+                    const SizedBox(height: 16),
+                    _ErrorBanner(message: auth.errorMessage!),
                   ],
-                ),
+                ],
               ),
             ),
           ),
@@ -135,20 +95,24 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 }
 
-class _OrDivider extends StatelessWidget {
-  const _OrDivider();
+class _ConfigMissingBanner extends StatelessWidget {
+  const _ConfigMissingBanner();
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
-      children: [
-        Expanded(child: Divider()),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12),
-          child: Text('OR'),
-        ),
-        Expanded(child: Divider()),
-      ],
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.tertiaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        'This build has no identity provider configured. Rebuild with '
+        '--dart-define=ZITADEL_ISSUER/_CLIENT_ID/_REDIRECT_URI '
+        '(see mobile/.env.example).',
+        style: TextStyle(color: scheme.onTertiaryContainer),
+      ),
     );
   }
 }

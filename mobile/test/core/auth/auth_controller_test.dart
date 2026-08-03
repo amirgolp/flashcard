@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:flashcard_mobile/core/api/api_client.dart';
-import 'package:flashcard_mobile/core/api/auth_api.dart';
 import 'package:flashcard_mobile/core/api/providers.dart';
 import 'package:flashcard_mobile/core/api/token_store.dart';
 import 'package:flashcard_mobile/core/auth/auth_controller.dart';
@@ -43,7 +42,6 @@ ProviderContainer _container({
       client.dio.httpClientAdapter = adapter;
       return client;
     }),
-    authApiProvider.overrideWith((ref) => AuthApi(ref.watch(apiClientProvider))),
   ]);
 }
 
@@ -56,41 +54,6 @@ ResponseBody _json(int status, String body) => ResponseBody.fromString(
     );
 
 void main() {
-  test('login: success persists token and transitions to authenticated',
-      () async {
-    final store = InMemoryTokenStore();
-    final adapter = _FakeAdapter((options) {
-      expect(options.path, contains('/auth/login'));
-      return _json(200, '{"access_token":"jwt","token_type":"bearer"}');
-    });
-    final container = _container(adapter: adapter, tokenStore: store);
-    addTearDown(container.dispose);
-
-    final controller = container.read(authControllerProvider.notifier);
-    await controller.login(username: 'amir', password: 'pw1234567');
-
-    expect(container.read(authControllerProvider).status,
-        AuthStatus.authenticated);
-    expect(await store.readAccessToken(), 'jwt');
-  });
-
-  test('login: 401 surfaces a readable error', () async {
-    final store = InMemoryTokenStore();
-    final adapter = _FakeAdapter(
-      (_) => _json(401, '{"detail":"Incorrect username or password"}'),
-    );
-    final container = _container(adapter: adapter, tokenStore: store);
-    addTearDown(container.dispose);
-
-    final controller = container.read(authControllerProvider.notifier);
-    await controller.login(username: 'amir', password: 'wrong');
-
-    final state = container.read(authControllerProvider);
-    expect(state.status, AuthStatus.unauthenticated);
-    expect(state.errorMessage, contains('Incorrect username or password'));
-    expect(await store.readAccessToken(), isNull);
-  });
-
   test('restore with token → authenticated', () async {
     final store = InMemoryTokenStore();
     await store.save(accessToken: 'jwt');
@@ -112,6 +75,20 @@ void main() {
     await container.read(authControllerProvider.notifier).restore();
     expect(container.read(authControllerProvider).status,
         AuthStatus.unauthenticated);
+  });
+
+  test('loginWithOidc without OIDC config surfaces an error', () async {
+    final store = InMemoryTokenStore();
+    final adapter = _FakeAdapter((_) => _json(200, '{}'));
+    final container = _container(adapter: adapter, tokenStore: store);
+    addTearDown(container.dispose);
+
+    final controller = container.read(authControllerProvider.notifier);
+    await controller.loginWithOidc();
+
+    final state = container.read(authControllerProvider);
+    expect(state.status, AuthStatus.unauthenticated);
+    expect(state.errorMessage, contains('OIDC not configured'));
   });
 
   test('logout clears the token', () async {
