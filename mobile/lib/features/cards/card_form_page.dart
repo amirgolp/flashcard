@@ -518,13 +518,10 @@ class _Face extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            // ignore: deprecated_member_use — withValues needs Flutter 3.27+,
-            // pubspec allows 3.24.
-            accent.withOpacity(0.08),
+            accent.withValues(alpha: 0.08),
             scheme.surface,
           ],
         ),
-        color: scheme.surface,
       ),
       child: Column(
         children: [
